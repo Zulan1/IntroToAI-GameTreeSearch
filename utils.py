@@ -3,21 +3,16 @@ from grid import Grid, UpdateGridType
 from agents.agent import Agent, AgentType
 from agents.human_agent import HumanAgent
 from agents.interfering_agent import InterferingAgent
-from agents.stupid_greedy_agent import StupidGreedyAgent
-from agents.greedy_agent import GreedyAgent
-from agents.astar_agent import AStarAgent
-from agents.rtastar_agent import RTAStarAgent
-from agents.multi_agent import MultiAgent
 from type_aliases import Node
 
 agent_classes = {
-    AgentType.STUPID_GREEDY.value: StupidGreedyAgent,
-    AgentType.GREEDY.value: GreedyAgent,
-    AgentType.A_STAR.value: AStarAgent,
-    AgentType.RTA_STAR.value: RTAStarAgent,
+    # AgentType.STUPID_GREEDY.value: StupidGreedyAgent,
+    # AgentType.GREEDY.value: GreedyAgent,
+    # AgentType.A_STAR.value: AStarAgent,
+    # AgentType.RTA_STAR.value: RTAStarAgent,
     AgentType.HUMAN.value: HumanAgent,
     AgentType.INTERFERING.value: InterferingAgent,
-    AgentType.MULTI_AGNENT.value: MultiAgent
+    # AgentType.MULTI_AGNENT.value: MultiAgent
 }
 
 def InitGrid(initFilePath: str) -> (Grid, list[Agent]):
@@ -144,3 +139,17 @@ def MinimumSpanningTree(g: nx.Graph) -> nx.Graph:
         if not nx.has_path(mst, edge[0], edge[1]):
             mst.add_edge(edge[0], edge[1], weight=edge[2].get('weight', 1))
     return mst
+
+def GetNeighbors(grid: Grid, node: Node) -> set[Node]:
+    """Gets the neighbors of a node
+
+    Args:
+        grid (Grid): the simulator's grid
+        node (Node): a node
+
+    Returns:
+        set[Node]: the neighbors of the node
+    """
+    actions = set(edge[1] for edge in grid.graph.edges() if edge[0] == node).union(
+        set(edge[0] for edge in grid.graph.edges() if edge[1] == node))
+    return actions
