@@ -15,6 +15,7 @@ class AdversarialAgent(SearchAgent):
         self.cutOffLimit = 0
         self.alpha = float('-inf')
         self.beta = float('inf')
+        self.cost = 0
         
     # def FormulateGoal(self, grid: Grid, _: int) -> set[Node]:
     #     """Formulates the goal of the agent"""
@@ -56,9 +57,11 @@ class AdversarialAgent(SearchAgent):
         """
         actions = self.GetActions(grid)
         nextAgent = copy.deepcopy(self)
-        return max(actions, key=lambda a: otherAgent.MinValue(grid, nextAgent, 1, a))
+        self.cost = i
+        otherAgent.cost = i
+        return max(actions, key=lambda a: otherAgent.MinValue(grid, nextAgent, a))
 
-    def MinValue(self, grid: Grid, i: int, otherAgent: AdversarialAgent, action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
+    def MinValue(self, grid: Grid, otherAgent: AdversarialAgent, action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
         """
         Calculates the minimum value of the current agent's action.
 
@@ -71,12 +74,13 @@ class AdversarialAgent(SearchAgent):
         Returns:
             int: The minimum value of the current agent's action.
         """
-        otherAgent.ProcessStep(grid, action, i)
+        otherAgent.ProcessStep(grid, action, otherAgent.cost)
+        otherAgent.cost += 1
         actions = self.GetActions(grid)
         if cutOffLimit == 0 or not actions: return self.Eval(otherAgent, grid)
         v = float('inf')
         for a in actions:
-            v = min(v, otherAgent.MaxValue(grid, i + 1, self, a, alpha, beta, cutOffLimit - 1)[0])
+            v = min(v, otherAgent.MaxValue(grid, self, a, alpha, beta, cutOffLimit - 1)[0])
             if v <= alpha: return v
             beta = min(beta, v)
         return v
@@ -95,7 +99,7 @@ class AdversarialAgent(SearchAgent):
         otherEval = otherAgent.score + 0.5 * len(otherAgent.packages) + 0.25 * len(grid.packages)
         return selfEval - otherEval, selfEval, otherEval
 
-    def MaxValue(self, grid: Grid, i: int, otherAgent: AdversarialAgent, action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
+    def MaxValue(self, grid: Grid, otherAgent: AdversarialAgent, action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
         """
         Calculates the maximum value of the current agent's action.
 
@@ -108,12 +112,13 @@ class AdversarialAgent(SearchAgent):
         Returns:
             int: The maximum value of the current agent's action.
         """
-        self.ProcessStep(grid, action, i)
+        otherAgent.ProcessStep(grid, action, otherAgent.cost)
+        otherAgent.cost += 1
         actions = self.GetActions(grid)
         if cutOffLimit == 0 or not actions: return self.Eval(otherAgent, grid)
         v = float('-inf')
         for a in actions:
-            v = max(v, otherAgent.MinValue(grid, i, self, a, alpha, beta, cutOffLimit - 1 )[0])
+            v = max(v, otherAgent.MinValue(grid, self, a, alpha, beta, cutOffLimit)[0])
             if v >= beta: return v
             alpha = max(alpha, v)
         return v
