@@ -16,7 +16,7 @@ class AdversarialAgent(SearchAgent):
         self.alpha = float('-inf')
         self.beta = float('inf')
         self.cost = 0
-        
+
     # def FormulateGoal(self, grid: Grid, _: int) -> set[Node]:
     #     """Formulates the goal of the agent"""
     #     from heuristics import GetPickUpsAndDropDowns
@@ -42,13 +42,13 @@ class AdversarialAgent(SearchAgent):
             actions.add(self.coordinates)
         return actions
 
-    def Search(self, grid: Grid, nodes: set[Node], i: int, otherAgent: AdversarialAgent) -> list[Node]:
+    def Search(self, grid: Grid, _: set[Node], i: int, otherAgent: AdversarialAgent) -> list[Node]:
         """
         Performs a search for the best action to take based on the given grid state and other agent's information.
 
         Args:
             grid (Grid): The current grid state.
-            nodes (set[Node]): The set of nodes in the game tree.
+            _ (set[Node]): placeholder.
             otherAgent (AdversarialAgent): The other adversarial agent.
             i (int): The index of the current agent.
 
@@ -61,7 +61,8 @@ class AdversarialAgent(SearchAgent):
         otherAgent.cost = i
         return max(actions, key=lambda a: otherAgent.MinValue(grid, nextAgent, a))
 
-    def MinValue(self, grid: Grid, otherAgent: AdversarialAgent, action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
+    def MinValue(self, grid: Grid, otherAgent: AdversarialAgent, action: Node,
+                 alpha: float, beta: float, cutOffLimit: int) -> int:
         """
         Calculates the minimum value of the current agent's action.
 
@@ -99,7 +100,8 @@ class AdversarialAgent(SearchAgent):
         otherEval = otherAgent.score + 0.5 * len(otherAgent.packages) + 0.25 * len(grid.packages)
         return selfEval - otherEval, selfEval, otherEval
 
-    def MaxValue(self, grid: Grid, otherAgent: AdversarialAgent, action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
+    def MaxValue(self, grid: Grid, otherAgent: AdversarialAgent,
+                 action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
         """
         Calculates the maximum value of the current agent's action.
 
