@@ -19,7 +19,6 @@ def Main():
     grid: Grid
     agents: list[Agent]
     grid, agents = InitGrid(filePath)
-
     i = 0
     while any(agent.done is not True for agent in agents) and i <= Agent.lastDropOffTime:
         for agent in agents:

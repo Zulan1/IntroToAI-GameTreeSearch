@@ -2,8 +2,9 @@ from __future__ import annotations
 import copy
 from typing import Tuple
 from agents.search_agent import SearchAgent
+from agents.agent import Agent
 from grid import Grid
-from type_aliases import Node
+from type_aliases import Node, Edge
 
 class AdversarialAgent(SearchAgent):
     """Adversarial Agent Class
@@ -11,13 +12,10 @@ class AdversarialAgent(SearchAgent):
     Args:
         Agent (Agent): inherits from Agent class
     """
-    visitedStates = dict[MultiAgentState, int] = {}
+    cutOffLimit = 100
 
     def __init__(self, params: list[str], _: Grid) -> None:
         super().__init__(params, _)
-        self.cutOffLimit = 0
-        self.alpha = float('-inf')
-        self.beta = float('inf')
         self.cost = 0
 
     # def FormulateGoal(self, grid: Grid, _: int) -> set[Node]:
@@ -45,7 +43,7 @@ class AdversarialAgent(SearchAgent):
             actions.add(self.coordinates)
         return actions
 
-    def Search(self, grid: Grid, _: set[Node], i: int, otherAgent: AdversarialAgent) -> list[Node]:
+    def Search(self, grid: Grid, _: set[Node], i: int, agents: list[Agent]) -> list[Node]:
         """
         Performs a search for the best action to take based on the given grid state and other agent's information.
 
@@ -58,14 +56,23 @@ class AdversarialAgent(SearchAgent):
         Returns:
             list[Node]: The list of nodes representing the best action to take.
         """
+        otherAgent =([agent for agent in agents if agent != self and isinstance(agent, AdversarialAgent)] or [None])[0]
+        assert otherAgent is not None, "No other adversarial agent found"
         actions = self.GetActions(grid)
         nextAgent = copy.deepcopy(self)
+        nextGrid = copy.deepcopy(grid)
+        nextOtherAgent = copy.deepcopy(otherAgent)
+        visitedStates = dict[State, int] = {}
+        alpha = float('-inf')
+        beta = float('inf')
+        cutOff = AdversarialAgent.cutOffLimit 
         self.cost = i
         otherAgent.cost = i
-        return max(actions, key=lambda a: otherAgent.MinValue(grid, nextAgent, a))
+        return max(actions, key=lambda a: nextOtherAgent.MinValue(
+            nextGrid, nextAgent, a, alpha, beta, cutOff, visitedStates))
 
     def MinValue(self, grid: Grid, otherAgent: AdversarialAgent, action: Node,
-                 alpha: float, beta: float, cutOffLimit: int) -> int:
+                 alpha: float, beta: float, cutOffLimit: int, visitedStates: dict[State, int]) -> int:
         """
         Calculates the minimum value of the current agent's action.
 
@@ -78,13 +85,20 @@ class AdversarialAgent(SearchAgent):
         Returns:
             int: The minimum value of the current agent's action.
         """
-        otherAgent.ProcessStep(grid, action, otherAgent.cost)
         otherAgent.cost += 1
+        otherAgent.ProcessStep(grid, action, otherAgent.cost)
+        nextState = State(grid, self, otherAgent)
+        if nextState in visitedStates and visitedStates[nextState] <= otherAgent.cost and\
+            action != otherAgent.coordinates:
+            return float('inf')
+        visitedStates[nextState] = otherAgent.cost
         actions = self.GetActions(grid)
         if cutOffLimit == 0 or not actions: return self.Eval(otherAgent, grid)
         v = float('inf')
         for a in actions:
-            v = min(v, otherAgent.MaxValue(grid, self, a, alpha, beta, cutOffLimit - 1)[0])
+            nextAgent = copy.deepcopy(self)
+            nextGrid = copy.deepcopy(grid)
+            v = min(v, otherAgent.MaxValue(nextGrid, nextAgent, a, alpha, beta, cutOffLimit - 1, visitedStates)[0])
             if v <= alpha: return v
             beta = min(beta, v)
         return v
@@ -104,7 +118,7 @@ class AdversarialAgent(SearchAgent):
         return selfEval - otherEval, selfEval, otherEval
 
     def MaxValue(self, grid: Grid, otherAgent: AdversarialAgent,
-                 action: Node, alpha: float, beta: float, cutOffLimit: int) -> int:
+                 action: Node, alpha: float, beta: float, cutOffLimit: int, visitedStates: dict[State, int]) -> int:
         """
         Calculates the maximum value of the current agent's action.
 
@@ -117,18 +131,25 @@ class AdversarialAgent(SearchAgent):
         Returns:
             int: The maximum value of the current agent's action.
         """
-        otherAgent.ProcessStep(grid, action, otherAgent.cost)
         otherAgent.cost += 1
+        otherAgent.ProcessStep(grid, action, otherAgent.cost)
+        nextState = State(grid, self, otherAgent)
+        if nextState in visitedStates and visitedStates[nextState] <= otherAgent.cost and\
+            action != otherAgent.coordinates:
+            return float('-inf')
+        visitedStates[nextState] = otherAgent.cost
         actions = self.GetActions(grid)
         if cutOffLimit == 0 or not actions: return self.Eval(otherAgent, grid)
         v = float('-inf')
         for a in actions:
-            v = max(v, otherAgent.MinValue(grid, self, a, alpha, beta, cutOffLimit)[0])
+            nextAgent = copy.deepcopy(self)
+            nextGrid = copy.deepcopy(grid)
+            v = max(v, otherAgent.MinValue(nextGrid, nextAgent, a, alpha, beta, cutOffLimit, visitedStates)[0])
             if v >= beta: return v
             alpha = max(alpha, v)
         return v
 
-class MultiAgentState:
+class State:
     """
     Represents the state of a multi-agent system.
 
@@ -139,14 +160,15 @@ class MultiAgentState:
         interfering (InterferingAgent): The interfering agent.
     """
 
-    def __init__(self, grid: Grid, agent: AdversarialAgent):
+    def __init__(self, grid: Grid, agent: AdversarialAgent, otherAgent: AdversarialAgent):
         self.grid: Grid = grid
         self.agent: AdversarialAgent = agent
+        self.otherAgent: AdversarialAgent = otherAgent
 
     def __hash__(self):
         return hash(self.ToBaseClasses())
 
-    def __eq__(self, other: MultiAgentState):
+    def __eq__(self, other: State):
         return self.ToBaseClasses() == other.ToBaseClasses()
 
     def ToBaseClasses(self) ->\
@@ -158,7 +180,7 @@ class MultiAgentState:
             Tuple[Tuple[Node, int], Tuple[Node, Tuple[Node, int]], Tuple[Node ,Tuple[Node, int]], Tuple[Edge]]: 
             A tuple containing the coordinates, pickups, dropdowns, and edges of the multi-agent.
         """
-        return (self.agent.agent1.coordinates, self.agent.agent1.GetPickups(),
-                self.agent.agent1.GetDropdowns(), self.agent.agent2.coordinates,
-                self.agent.agent2.GetPickups(), self.agent.agent2.GetDropdowns(),
+        return (self.agent.coordinates, self.agent.GetPickups(),
+                self.agent.GetDropdowns(), self.otherAgent.coordinates,
+                self.otherAgent.GetPickups(), self.otherAgent.GetDropdowns(),
                 tuple(self.grid.fragEdges))
