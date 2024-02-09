@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+from typing import Tuple
 from agents.search_agent import SearchAgent
 from grid import Grid
 from type_aliases import Node
@@ -10,6 +11,8 @@ class AdversarialAgent(SearchAgent):
     Args:
         Agent (Agent): inherits from Agent class
     """
+    visitedStates = dict[MultiAgentState, int] = {}
+
     def __init__(self, params: list[str], _: Grid) -> None:
         super().__init__(params, _)
         self.cutOffLimit = 0
@@ -124,4 +127,38 @@ class AdversarialAgent(SearchAgent):
             if v >= beta: return v
             alpha = max(alpha, v)
         return v
-    
+
+class MultiAgentState:
+    """
+    Represents the state of a multi-agent system.
+
+    Attributes:
+        grid (Grid): The grid representing the environment.
+        agent1 (AStarAgent): The first A* agent.
+        agent2 (AStarAgent): The second A* agent.
+        interfering (InterferingAgent): The interfering agent.
+    """
+
+    def __init__(self, grid: Grid, agent: AdversarialAgent):
+        self.grid: Grid = grid
+        self.agent: AdversarialAgent = agent
+
+    def __hash__(self):
+        return hash(self.ToBaseClasses())
+
+    def __eq__(self, other: MultiAgentState):
+        return self.ToBaseClasses() == other.ToBaseClasses()
+
+    def ToBaseClasses(self) ->\
+        Tuple[Tuple[Node, int], Tuple[Node, Tuple[Node, int]], Tuple[Node ,Tuple[Node, int]], Tuple[Edge]]:
+        """
+        Converts the current state of the multi-agent to a tuple of base classes.
+
+        Returns:
+            Tuple[Tuple[Node, int], Tuple[Node, Tuple[Node, int]], Tuple[Node ,Tuple[Node, int]], Tuple[Edge]]: 
+            A tuple containing the coordinates, pickups, dropdowns, and edges of the multi-agent.
+        """
+        return (self.agent.agent1.coordinates, self.agent.agent1.GetPickups(),
+                self.agent.agent1.GetDropdowns(), self.agent.agent2.coordinates,
+                self.agent.agent2.GetPickups(), self.agent.agent2.GetDropdowns(),
+                tuple(self.grid.fragEdges))

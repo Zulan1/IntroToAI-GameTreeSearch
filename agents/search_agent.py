@@ -83,7 +83,7 @@ class SearchAgent(Agent, ABC):
                 if i > package.dropOffMaxTime: continue
                 self._score += 1
             del self._packages[self._coordinates]
-    
+
     def GetDropdowns(self) -> Tuple[Tuple[Node, int]]:
         """Returns the dropoff locations of the agent's packages
 
