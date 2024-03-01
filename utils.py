@@ -3,6 +3,7 @@ from grid import Grid, UpdateGridType
 from agents.agent import Agent, AgentType
 from agents.human_agent import HumanAgent
 from agents.interfering_agent import InterferingAgent
+from agents.adversarial_agent import AdversarialAgent
 from type_aliases import Node
 
 agent_classes = {
@@ -13,6 +14,7 @@ agent_classes = {
     AgentType.HUMAN.value: HumanAgent,
     AgentType.INTERFERING.value: InterferingAgent,
     # AgentType.MULTI_AGNENT.value: MultiAgent
+    AgentType.ADVERSARIAL.value: AdversarialAgent,
 }
 
 def InitGrid(initFilePath: str) -> (Grid, list[Agent]):

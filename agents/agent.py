@@ -50,3 +50,4 @@ class AgentType(Enum):
     HUMAN = 'H'
     INTERFERING = 'I'
     MULTI_AGNENT = 'MA'
+    ADVERSARIAL = 'AD'

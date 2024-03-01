@@ -113,7 +113,7 @@ class HumanAgent(Agent):
 
         nx.draw_networkx_labels(grid.graph, self.pos, ax=self.ax)
         iHandle = mpatches.Patch(color='none', label=f'i = {i}')
-        score = ([agent.score for agent in agents if isinstance(agent, SearchAgent)])[0] #+\
+        score = tuple([agent.score for agent in agents if isinstance(agent, SearchAgent)]) #+\
             # [(agent.agent1.score, agent.agent2.score) for agent in agents if isinstance(agent, MultiAgent)])[0]
         scoreHandle = mpatches.Patch(color='none', label=f'score = {score}')
         self.handles[0] = iHandle
