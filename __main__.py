@@ -3,7 +3,7 @@ from os import path
 from grid import Grid
 from utils import InitGrid
 from agents.agent import Agent
-
+from agents.adversarial_agent import AdversarialAgent
 
 def Main():
     """Main function of the project
@@ -14,6 +14,7 @@ def Main():
     config = configparser.ConfigParser()
     config.read('config.ini')
     filePath = config['settings'].get('grid_config_path', './tests/test1.txt')
+    AdversarialAgent.cutOffLimit = int(config['settings'].get('cutoff', 10))
     assert path.exists(filePath), "Path to grid configuration file does not exist!"
 
     grid: Grid
