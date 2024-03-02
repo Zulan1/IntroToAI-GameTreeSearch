@@ -72,7 +72,7 @@ class AdversarialAgent(SearchAgent):
             list[Node]: The sorted list of actions.
         """
         from utils import Dijkstra
-        packages = grid.GetPickups() + self.GetDropdowns()
+        packages = grid.GetPickups() + tuple((p0,0) for p0,_ in self.GetDropdowns())
         def SortKey(action: Node) -> tuple[int, int]:
             nonlocal packages
 
@@ -144,9 +144,11 @@ class AdversarialAgent(SearchAgent):
         nextAgent = copy.deepcopy(self)
         nextAgent.cost += 1
         nextAgent.seq.append(action)
-        # seq = [(0, 3)]
-        # if nextAgent.seq[:len(seq)] == seq:
-        #     print(1)
+        # seq = [(0, 1), (0, 2), (0, 3), (0, 2), (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (4, 0)]
+        # otherSeq = [(4, 2), (4, 1), (4, 0), (4, 1), (3, 1), (3, 2), (2, 2), (1, 2), (0, 2), (0, 3)]
+        if (0, 3) in nextAgent.seq and len(nextAgent.seq) == 10 and nextAgent.seq[9] == (4, 0):
+            if (4, 0) in nextAgent.otherAgent.seq and (nextAgent.otherAgent.seq[-1] == (1, 3) or nextAgent.otherAgent.seq[-1] == (0, 2)):
+                print(f"Found the sequence: {nextAgent.otherAgent.seq}")
         nextAgent.ProcessStep(nextGrid, (nextAgent.coordinates, action), nextAgent.cost)
         return nextGrid, nextAgent
 
@@ -237,14 +239,14 @@ class AdversarialAgent(SearchAgent):
             flag = False
             if alpha[0] == v[0] and alpha[1] != v[1]:
                 flag = True
-                print(f"alpha: {alpha[:2]}, v: {v[:2]}")
+                # print(f"alpha: {alpha[:2]}, v: {v[:2]}")
 
             if alpha == max(alpha, v, key=MaxSortKey):
                 return v
 
             beta = min(beta, v, key=MinSortKey)
-            if flag:
-                print(f"new beta: {beta[:2]}\n")
+            # if flag:
+            #     print(f"new beta: {beta[:2]}\n")
 
         return v if v[0] != float('inf') else defaultValue
 
@@ -283,13 +285,13 @@ class AdversarialAgent(SearchAgent):
             flag = False
             if beta[0] == v[0] and beta[1] != v[1] or v[:2] == (float(0), float(1)):
                 flag = True
-                print(f"beta: {beta[:2]}, v: {v[:2]}")
+                # print(f"beta: {beta[:2]}, v: {v[:2]}")
 
             if beta == min(beta, v, key=MinSortKey):
                 return v
             alpha = max(alpha, v, key=MaxSortKey)
-            if flag:
-                print(f"new alpha: {alpha[:2]}\n")
+            # if flag:
+            #     print(f"new alpha: {alpha[:2]}\n")
         return v if v[0] != float('-inf') else defaultValue
 
 def MinSortKey(eValue: Tuple[int, int, list[Node]]) -> tuple[int, int, int]:
