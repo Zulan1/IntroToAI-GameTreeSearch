@@ -25,7 +25,7 @@ class SearchAgent(Agent, ABC):
         return self._score
 
     @abstractmethod
-    def Search(self, grid: Grid, nodes: set[Node], i: int, otherAgent: SearchAgent) -> None:
+    def Search(self, grid: Grid, nodes: set[Node], agents: list[Agent], i: int) -> None:
         """abstract method for search agents"""
         return []
 

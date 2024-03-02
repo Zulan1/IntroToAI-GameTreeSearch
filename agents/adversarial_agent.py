@@ -1,40 +1,44 @@
 from __future__ import annotations
 import copy
+import heapq
 from typing import Tuple
 from agents.search_agent import SearchAgent
 from agents.agent import Agent
 from grid import Grid
 from type_aliases import Node, Edge
 
-def GetPickUpsAndDropDowns(grid: Grid, agent: SearchAgent) -> set[Node]:
-        """Gets all the nodes of packages' pickups or dropoffs
-
-        Args:
-            grid (Grid): The Simulator's grid
-            agent (GreedyAgent): The agent
-
-        Returns:
-            set[Node]: All the grid's pickup and dropoff locations
-        """
-        relevantNodes = set(grid.packages)
-        relevantNodes = relevantNodes.union({p.dropoffLoc for s in grid.packages.values() for p in s})
-        relevantNodes = relevantNodes.union({p.dropoffLoc for s in agent.packages.values() for p in s})
-        return relevantNodes
-    
 class AdversarialAgent(SearchAgent):
     """Adversarial Agent Class
 
     Args:
         Agent (Agent): inherits from Agent class
     """
-    cutOffLimit = 15
+    cutOffLimit = 11
+    iterations = 0
+    agentNum = 0
 
     def __init__(self, params: list[str], _: Grid) -> None:
         super().__init__(params, _)
         self.cost = 0
-    
+        self.otherAgent: AdversarialAgent = None
+        self.cutoff = 0
+
     def FormulateGoal(self, grid: Grid, _: int) -> set[Node]:
         """Formulates the goal of the agent"""
+        def GetPickUpsAndDropDowns(grid: Grid, agent: SearchAgent) -> set[Node]:
+            """Gets all the nodes of packages' pickups or dropoffs
+
+            Args:
+                grid (Grid): The Simulator's grid
+                agent (GreedyAgent): The agent
+
+            Returns:
+                set[Node]: All the grid's pickup and dropoff locations
+            """
+            relevantNodes = set(grid.packages)
+            relevantNodes = relevantNodes.union({p.dropoffLoc for s in grid.packages.values() for p in s})
+            relevantNodes = relevantNodes.union({p.dropoffLoc for s in agent.packages.values() for p in s})
+            return relevantNodes
         return GetPickUpsAndDropDowns(grid, self)
 
     def GetActions(self, grid: Grid) -> set[Node]:
@@ -54,9 +58,37 @@ class AdversarialAgent(SearchAgent):
                 for p in sum(grid.packages.values(), [])):
             print(f"Agent is at {self.coordinates} and might need to wait")
             actions.add(self.coordinates)
-        return actions
+        return self.SortActions(actions, grid)
 
-    
+    def SortActions(self, actions: set[Node], grid: Grid) -> list[Node]:
+        """
+        Sorts the given set of actions based on the current state of the grid.
+
+        Args:
+            actions (set[Node]): The set of actions to sort.
+            grid (Grid): The current state of the grid.
+
+        Returns:
+            list[Node]: The sorted list of actions.
+        """
+        from utils import Dijkstra
+        packages = grid.GetPickups() + self.GetDropdowns()
+        def SortKey(action: Node) -> tuple[int, int]:
+            nonlocal packages
+
+            lens = []
+            for i, p in enumerate(packages):
+                seq = Dijkstra(grid.graph, action, p[0])
+                l = (max(len(seq), p[1] - (self.cost + 1)), i)
+                heapq.heappush(lens, l)
+            return lens[0] if lens else 0
+
+        sortedActions = []
+        for i, action in enumerate(actions):
+            heapq.heappush(sortedActions, (SortKey(action), i, action))
+        sortedActions = [action for _, _, action in sortedActions]
+        return sortedActions
+
     def Search(self, grid: Grid, _: set[Node], agents: list[Agent], i: int) -> list[Node]:
         """
         Performs a search for the best action to take based on the given grid state and other agent's information.
@@ -70,28 +102,108 @@ class AdversarialAgent(SearchAgent):
         Returns:
             list[Node]: The list of nodes representing the best action to take.
         """
-        print("Start Search")
+        print(f'Starting Search for step {i} for agent {AdversarialAgent.agentNum + 1}')
+        AdversarialAgent.agentNum = 1 - AdversarialAgent.agentNum
         otherAgent =([agent for agent in agents if agent != self and isinstance(agent, AdversarialAgent)] or [None])[0]
         assert otherAgent is not None, "No other adversarial agent found"
         actions = self.GetActions(grid)
         visitedStates: dict[State, int] = {}
-        alpha = float('-inf')
-        beta = float('inf')
-        cutOff = AdversarialAgent.cutOffLimit
+        alpha = (float('-inf'), float('-inf'), float('inf'))
+        beta = (float('inf'), float('inf'), float('inf'))
         self.cost = i
         otherAgent.cost = i
-        def key(action):
-            if action == (0,1):
-                print("Second option")
-            v = otherAgent.MinValue(grid, self, action, alpha, beta, cutOff, visitedStates)
-            print(f"Value: {v}, Action: {action}")
-            return v
-        nextAction = max(actions, key=key)
-        print(f"Next Action: {nextAction}")
+        self.cutOffLimit = AdversarialAgent.cutOffLimit + i
+        otherAgent.cutOffLimit = AdversarialAgent.cutOffLimit + i
+        self.otherAgent = otherAgent
+        self.otherAgent.otherAgent = self
+        optionNum = 0
+        def Key(action: Node) -> Tuple[int, int, list[Node]]:
+            AdversarialAgent.iterations = 0
+            nonlocal optionNum
+            v = self.MinValue(grid, action, alpha, beta, visitedStates)
+            print(f"Option ({optionNum}): Action: {action}, Value: {v[:2]}, iterations: {AdversarialAgent.iterations}\n"
+                  f"Seq: {v[2] if v[2] != float('inf') else float('inf')}\n")
+            optionNum += 1
+            return MaxSortKey(v)
+        nextAction = max(actions, key=Key)
+        print(f"Next Action: {nextAction}\n\n")
         return [nextAction]
 
-    def MinValue(self, grid: Grid, otherAgent: AdversarialAgent, action: Node,
-                 alpha: float, beta: float, cutOffLimit: int, visitedStates: dict[State, int]) -> int:
+    def SimulateStep(self, grid: Grid, action: Node) -> tuple[Grid, AdversarialAgent]:
+        """
+        Simulates a step in the game by applying the given action to the grid.
+
+        Args:
+            grid (Grid): The current game grid.
+            action (Node): The action to be applied to the grid.
+
+        Returns:
+            tuple[Grid, AdversarialAgent]: A tuple containing the updated grid and the updated agent.
+        """
+        nextGrid = copy.deepcopy(grid)
+        nextAgent = copy.deepcopy(self)
+        nextAgent.cost += 1
+        nextAgent.seq.append(action)
+        # seq = [(0, 3)]
+        # if nextAgent.seq[:len(seq)] == seq:
+        #     print(1)
+        nextAgent.ProcessStep(nextGrid, (nextAgent.coordinates, action), nextAgent.cost)
+        return nextGrid, nextAgent
+
+    def CutoffTest(self, actions: set[Node], state: State) -> bool:
+        """
+        Determines whether the search should be cut off based on the given parameters.
+
+        Args:
+            actions (set[Node]): The set of possible actions.
+            state (State): The current state of the game.
+            cutOffLimit (int): The maximum depth to search.
+
+        Returns:
+            bool: True if the search should be cut off, False otherwise.
+        """
+        nextAgent = state.agent
+        nextOtherAgent = state.otherAgent
+        nextGrid = state.grid
+        nodes = nextAgent.FormulateGoal(nextGrid, None).union(nextOtherAgent.FormulateGoal(nextGrid, None))
+        if self.cost == self.cutOffLimit or not actions or not nodes:
+            return True
+        return False
+
+    def IsVisited(self, state: State, visitedStates: dict[State, int], action: Node) -> bool:
+        """
+        Checks if the given state has been visited before.
+
+        Args:
+            state (State): The state to check.
+            visitedStates (dict[State, int]): The dictionary of visited states.
+
+        Returns:
+            bool: True if the state has been visited before, False otherwise.
+        """
+        if state in visitedStates.keys() and action != self.coordinates:
+            if len(visitedStates[state]) <= len(state.agent.seq):
+                return True
+            del visitedStates[state]
+        return False
+
+    def Eval(self, grid: Grid) -> int:
+        """
+        Evaluates the current state of the game.
+
+        Args:
+            otherAgent (AdversarialAgent): The other adversarial agent.
+
+        Returns:
+            int: The evaluation of the current state of the game.
+        """
+        def AgentEval(agent: AdversarialAgent) -> int:
+            return agent.score + 0.5 * len(agent.packages) + 0.2 * len(grid.packages)
+        selfEval = AgentEval(self)
+        otherEval = AgentEval(self.otherAgent)
+        return round(selfEval - otherEval, 1), selfEval, self.seq
+
+    def MinValue(self, grid: Grid, action: Node, alpha: float, beta: float, visitedStates: dict[State, int]) -> int:
         """
         Calculates the minimum value of the current agent's action.
 
@@ -104,61 +216,39 @@ class AdversarialAgent(SearchAgent):
         Returns:
             int: The minimum value of the current agent's action.
         """
-        defaultValue = (float('-inf'), float('-inf'))
-        # nextAgent = copy.deepcopy(self)
-        nextGrid = copy.deepcopy(grid)
-        nextOtherAgent = copy.deepcopy(otherAgent)
-        # print(f"Visited States: {visitedStates}\n\n")
-        nextOtherAgent.cost += 1
-        nextOtherAgent.ProcessStep(nextGrid, (nextOtherAgent.coordinates, action), nextOtherAgent.cost)
-        nextState = State(nextGrid, nextOtherAgent, self)
-        # print(f"len(visitedStates): {len(visitedStates)}")
-        if nextState in visitedStates.keys() and visitedStates[nextState] <= nextOtherAgent.cost and\
-            action != otherAgent.coordinates:
-            # print("mashu")
+        defaultValue = (float('-inf'), float('-inf'), float('inf'))
+        nextGrid, nextAgent = self.SimulateStep(grid, action)
+        nextOtherAgent = nextAgent.otherAgent
+        nextState = State(nextGrid, nextAgent, nextOtherAgent)
+        if self.IsVisited(nextState, visitedStates, action):
             return defaultValue
-        visitedStates[nextState] = nextOtherAgent.cost
-        actions = self.GetActions(nextGrid)
-        if nextOtherAgent.score >= 1:
-            print(f"MinValue: {nextOtherAgent.Eval(self, nextGrid)}")  
-        if cutOffLimit == 0 or not actions or len(nextGrid.packages) == 0:
-            eval1 = nextOtherAgent.Eval(self, nextGrid)
-            print(f"Eval: {eval1}, CutOff: {cutOffLimit}, Alpha: {alpha}, Beta: {beta},"
-                  f"coords: {self.coordinates}, otherCoords: {otherAgent.coordinates},"
-                  f"action: {actions}, len(nextGrid.packages): {len(nextGrid.packages)}\n")
-            if eval1[1] == float(1):
-                print("!!!"*100 + "\n")
-            return eval1
-        # print(f"cutOffLimit Min: {cutOffLimit}")
-        v = (float('inf'), float('-inf'))
+        visitedStates[nextState] = nextAgent.seq
+        AdversarialAgent.iterations += 1
+
+        actions = nextOtherAgent.GetActions(nextGrid)
+        if nextAgent.CutoffTest(actions, nextState):
+            return nextAgent.Eval(nextGrid)
+
+        v = (float('inf'), float('inf'), float('inf'))
         for nextAction in actions:
-            v = min(v, nextOtherAgent.MaxValue(nextGrid, self, nextAction, alpha, beta, cutOffLimit - 1, visitedStates),
-                    key = lambda x: (x[0], -x[1]))
-            #assert v != float('inf'), f"v: {v}, actions: {actions}, otherAgent: {nextOtherAgent.coordinates}"
-            if v[0] <= alpha:
-                # print(f"Prune Min Value: {v}, CutOff: {cutOffLimit}, Alpha: {alpha}, Beta: {beta}, coords: {self.coordinates}, otherCoords: {otherAgent.coordinates}")
+            v = min(v, nextAgent.MaxValue(nextGrid, nextAction, alpha, beta, visitedStates),
+                    key=MinSortKey)
+
+            flag = False
+            if alpha[0] == v[0] and alpha[1] != v[1]:
+                flag = True
+                print(f"alpha: {alpha[:2]}, v: {v[:2]}")
+
+            if alpha == max(alpha, v, key=MaxSortKey):
                 return v
-            beta = min(beta, v[0])
-        
-        # print(f"Min Value: {v}, CutOff: {cutOffLimit}, Alpha: {alpha}, Beta: {beta}, coords: {self.coordinates}, otherCoords: {otherAgent.coordinates}")
+
+            beta = min(beta, v, key=MinSortKey)
+            if flag:
+                print(f"new beta: {beta[:2]}\n")
+
         return v if v[0] != float('inf') else defaultValue
 
-    def Eval(self, otherAgent: AdversarialAgent, grid: Grid) -> int:
-        """
-        Evaluates the current state of the game.
-
-        Args:
-            otherAgent (AdversarialAgent): The other adversarial agent.
-
-        Returns:
-            int: The evaluation of the current state of the game.
-        """
-        selfEval = self.score + 0.5 * len(self.packages) + 0.2 * len(grid.packages)
-        otherEval = otherAgent.score + 0.5 * len(otherAgent.packages) + 0.2 * len(grid.packages)
-        return round(selfEval - otherEval,1), selfEval#, otherEval
-
-    def MaxValue(self, grid: Grid, otherAgent: AdversarialAgent,
-                 action: Node, alpha: float, beta: float, cutOffLimit: int, visitedStates: dict[State, int]) -> int:
+    def MaxValue(self, grid: Grid, action: Node, alpha: float, beta: float, visitedStates: dict[State, int]) -> int:
         """
         Calculates the maximum value of the current agent's action.
 
@@ -171,43 +261,62 @@ class AdversarialAgent(SearchAgent):
         Returns:
             int: The maximum value of the current agent's action.
         """
-        defaultValue = (float('inf'), float('-inf'))
-        # nextAgent = copy.deepcopy(self)
-        nextGrid = copy.deepcopy(grid)
-        nextOtherAgent = copy.deepcopy(otherAgent)
-        # print(f"Visited States: {visitedStates}\n\n")
-        nextOtherAgent.cost += 1
-        nextOtherAgent.ProcessStep(nextGrid, (nextOtherAgent.coordinates, action), nextOtherAgent.cost)
-        nextState = State(nextGrid, self, nextOtherAgent)
-        # print(f"len(visitedStates): {len(visitedStates)}")
-        if nextState in visitedStates.keys() and visitedStates[nextState] <= nextOtherAgent.cost and\
-            action != otherAgent.coordinates:
-            # print("mashu")
+        defaultValue = (float('inf'), float('inf'), float('inf'))
+        nextGrid, nextOtherAgent = self.otherAgent.SimulateStep(grid, action)
+        nextAgent = nextOtherAgent.otherAgent
+        nextState = State(nextGrid, nextAgent, nextOtherAgent)
+        if self.otherAgent.IsVisited(nextState, visitedStates, action):
             return defaultValue
-        visitedStates[nextState] = nextOtherAgent.cost
-        actions = self.GetActions(nextGrid)
-        if cutOffLimit == 0 or not actions or len(nextGrid.packages) == 0:
-            eval1 = self.Eval(nextOtherAgent, nextGrid)
-            print(f"Eval: {eval1}, CutOff: {cutOffLimit}, Alpha: {alpha}, Beta: {beta},"
-                  f"coords: {self.coordinates}, otherCoords: {otherAgent.coordinates},"
-                  f"action: {actions}, len(nextGrid.packages): {len(nextGrid.packages)}\n")
-            if eval1[1] == float(1):
-                print("!!!"*100 + "\n")
-            return eval1
-        # print(f"cutOffLimit Max: {cutOffLimit}")
-        v = (float('-inf'), float('-inf'))
-        if self.score >= 1:
-            print(f"MinValue: {self.Eval(nextOtherAgent, nextGrid)}")
+        visitedStates[nextState] = nextOtherAgent.seq
+        AdversarialAgent.iterations += 1
+
+        actions = nextAgent.GetActions(nextGrid)
+        if nextOtherAgent.CutoffTest(actions, nextState):
+            return nextAgent.Eval(nextGrid)
+
+        v = (float('-inf'), float('-inf'), float('inf'))
+
         for nextAction in actions:
-            v = max(v, nextOtherAgent.MinValue(nextGrid, self, nextAction, alpha, beta, cutOffLimit, visitedStates),
-                    key = lambda x: (x[0], x[1]))
-            #if v != float('-inf'): continue#, f"v: {v}, actions: {actions}, otherAgent: {nextOtherAgent.coordinates}"
-            if v[0] >= beta:
-                # print(f"Prune Max Value: {v}, CutOff: {cutOffLimit}, Alpha: {alpha}, Beta: {beta}, coords: {self.coordinates}, otherCoords: {otherAgent.coordinates}")
+            v = max(v, nextAgent.MinValue(nextGrid, nextAction, alpha, beta, visitedStates),
+                    key=MaxSortKey)
+
+            flag = False
+            if beta[0] == v[0] and beta[1] != v[1] or v[:2] == (float(0), float(1)):
+                flag = True
+                print(f"beta: {beta[:2]}, v: {v[:2]}")
+
+            if beta == min(beta, v, key=MinSortKey):
                 return v
-            alpha = max(alpha, v[0])
-        # print(f"Max Value: {v}, CutOff: {cutOffLimit}, Alpha: {alpha}, Beta: {beta}, coords: {self.coordinates}, otherCoords: {otherAgent.coordinates}")
+            alpha = max(alpha, v, key=MaxSortKey)
+            if flag:
+                print(f"new alpha: {alpha[:2]}\n")
         return v if v[0] != float('-inf') else defaultValue
+
+def MinSortKey(eValue: Tuple[int, int, list[Node]]) -> tuple[int, int, int]:
+    """
+    Returns a tuple used for sorting based on the given eValue.
+
+    Args:
+        eValue (Tuple[int, int, list[Node]]): The eValue to be sorted.
+
+    Returns:
+        tuple[int, int, int]: A tuple containing the elements of eValue, with the length of the third element
+                              being replaced with float('inf') if it is equal to float('inf').
+
+    """
+    return (eValue[0], eValue[1], len(eValue[2]) if eValue[2] != float('inf') else float('inf'))
+
+def MaxSortKey(eValue: Tuple[int, int, list[Node]]) -> tuple[int, int, int]:
+    """
+    Returns a tuple used for sorting based on the maximum value of eValue.
+
+    Args:
+        eValue (Tuple[int, int, list[Node]]): The eValue tuple containing three elements.
+
+    Returns:
+        tuple[int, int, int]: A tuple used for sorting based on the maximum value of eValue.
+    """
+    return (eValue[0], eValue[1], -len(eValue[2]) if eValue[2] != float('inf') else float('-inf'))
 
 class State:
     """
@@ -243,4 +352,5 @@ class State:
         return (self.agent.coordinates, self.agent.GetPickups(),
                 self.agent.GetDropdowns(), self.otherAgent.coordinates,
                 self.otherAgent.GetPickups(), self.otherAgent.GetDropdowns(),
+                self.grid.GetPickups(),
                 tuple(self.grid.fragEdges))
