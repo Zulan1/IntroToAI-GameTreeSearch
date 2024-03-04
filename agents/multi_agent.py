@@ -257,11 +257,8 @@ class MultiAgent(SearchAgent, ABC):
         v = [(float('-inf'), float('-inf'), None, None), (float('-inf'), float('-inf'), None, None)]
         for nextAction in actions:
             maxValue = self.MaxValue(nextState, nextAction, copy.deepcopy(alpha[::-1]))
-            # maxValue[2], maxValue[3] = maxValue[3], maxValue[2] # swap seqs
-            # maxValue = maxValue[::-1]
             v = max(v, maxValue, key=self.maxKeyFunc)
             if self.canBePruned:
-                # alpha = alpha[::-1]
                 if alpha[::-1] == max(alpha[::-1], v, key=self.maxKeyFunc):
                     MultiAgent.pruneCount += 1
                     return v[::-1]
