@@ -12,6 +12,7 @@ class SearchAgent(Agent, ABC):
         super().__init__(params, _)
         self.seq: list[Node] = []
         self._packages: dict[Node, list[Package]] = {}
+        self.cost = 0
         self._score: int = 0
 
     @property
@@ -59,6 +60,7 @@ class SearchAgent(Agent, ABC):
             self.seq = []
             return self.AgentStep(grid, agents, i)
         self.seq = self.seq[1:]
+        self.cost += 1
         return action
 
     def ProcessStep(self, grid: Grid, action: Edge = None, i: int = 0):

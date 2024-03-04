@@ -1,4 +1,5 @@
 import networkx as nx
+from typing import Tuple
 from grid import Grid, UpdateGridType
 from agents.agent import Agent, AgentType
 from agents.human_agent import HumanAgent
@@ -17,7 +18,7 @@ agent_classes = {
     AgentType.ADVERSARIAL.value: AdversarialAgent,
 }
 
-def InitGrid(initFilePath: str) -> (Grid, list[Agent]):
+def InitGrid(initFilePath: str) -> Tuple[Grid, list[Agent]]:
     """initializes grid from init file
 
     Args:
@@ -57,6 +58,9 @@ def InitGrid(initFilePath: str) -> (Grid, list[Agent]):
 
     lastDropOffTime = max(p.dropOffMaxTime for p in sum(grid.packages.values(), []))
     Agent.lastDropOffTime = lastDropOffTime
+
+    for i, agent in enumerate([agent for agent in agents if isinstance(agent, AdversarialAgent)]):
+        agent.agentNum = i
 
     return grid, agents
 
