@@ -171,7 +171,7 @@ class MultiAgent(SearchAgent, ABC):
         def Key(action: Node) -> Tuple[int, int, list[Node]]:
             nonlocal optionNum
             MultiAgent.pruneCount, MultiAgent.visitedCount, MultiAgent.iterations = 0, 0, 0
-            v = self.MaxValue(state, action, alpha)
+            v = self.MaxValue(state, action, alpha[:])
             print(f"Option ({optionNum}): Action: {action}, Value: {v[0][:2]}, iterations: {MultiAgent.iterations}, "
                   f"Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
                   f"Seq: {v[0][2]}\nOpponent Predicted Seq: {v[1][2]}\n")
@@ -244,9 +244,8 @@ class MultiAgent(SearchAgent, ABC):
         nextAgent.SimulateStep(nextGrid, action)
         if self.coordinates != action and nextState.IsVisited():
             retval = MultiAgent.visitedStates[nextState][1]
-            prevSeq = MultiAgent.visitedStates[nextState][0]
             seqPrefix = nextAgent.seq
-            newSeq = seqPrefix + retval[0][2][len(prevSeq):]
+            newSeq = seqPrefix + retval[0][2][len(seqPrefix):]
             retval[0][2] = newSeq
             return retval
         MultiAgent.iterations += 1
@@ -257,12 +256,13 @@ class MultiAgent(SearchAgent, ABC):
 
         v = [(float('-inf'), float('-inf'), None, None), (float('-inf'), float('-inf'), None, None)]
         for nextAction in actions:
-            maxValue = self.MaxValue(nextState, nextAction, alpha[::-1])
+            maxValue = self.MaxValue(nextState, nextAction, copy.deepcopy(alpha[::-1]))
             # maxValue[2], maxValue[3] = maxValue[3], maxValue[2] # swap seqs
             # maxValue = maxValue[::-1]
             v = max(v, maxValue, key=self.maxKeyFunc)
             if self.canBePruned:
-                if alpha == max(alpha, v, key=self.maxKeyFunc):
+                # alpha = alpha[::-1]
+                if alpha[::-1] == max(alpha[::-1], v, key=self.maxKeyFunc):
                     MultiAgent.pruneCount += 1
                     return v[::-1]
                 alpha[1] = max([alpha[1]], [v[1]], key=self.maxKeyFunc)[0]
@@ -318,6 +318,7 @@ class State:
         return (agent.coordinates, agent.GetDropdowns(),
                 otherAgent.coordinates, otherAgent.GetDropdowns(),
                 grid.GetPickups(), agent.score, otherAgent.score,
+                len(agent.seq), len(otherAgent.seq),
                 tuple(grid.fragEdges))
 
     def Successor(self):
@@ -339,12 +340,11 @@ class State:
         Returns:
             bool: True if the state has been visited, False otherwise.
         """
-
         if self in MultiAgent.visitedStates:
-            agent = self.agent if not self.reversed else self.otherAgent
-            if len(MultiAgent.visitedStates[self][0]) == len(agent.seq):
-                MultiAgent.visitedCount += 1
-                return True
+            # agent = self.agent if not self.reversed else self.otherAgent
+            # if len(MultiAgent.visitedStates[self][0]) == len(agent.seq):
+            MultiAgent.visitedCount += 1
+            return True
         return False
 
     def CutoffTest(self, actions: set[Node]) -> bool:
