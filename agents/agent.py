@@ -43,13 +43,7 @@ class Agent(ABC):
 
 class AgentType(Enum):
     """Agent Type Enum"""
-    STUPID_GREEDY = 'SG'
-    GREEDY = 'G'
-    A_STAR = 'A'
-    RTA_STAR = 'RTA'
     HUMAN = 'H'
-    INTERFERING = 'I'
-    MULTI_AGNENT = 'MA'
     ADVERSARIAL = 'AD'
     SEMI_COOP = 'SC'
     COOP = 'C'

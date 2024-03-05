@@ -9,4 +9,3 @@
 #H 4 3              ; "Human" agent (see below)  starts at (4,3)
 #AD 0 2              ; Normal agent starts at (0,0)
 #AD 4 1              ; Normal agent starts at (0,0)
-;#I 1 1              ; Interfering agent (see below) starts at (1,1)
