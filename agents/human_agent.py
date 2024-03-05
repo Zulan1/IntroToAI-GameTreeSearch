@@ -11,7 +11,8 @@ from grid import Grid
 
 class HumanAgent(Agent):
     """class for Human Agent"""
-
+    useButton = True
+    
     def __init__(self, params:list[str], grid: Grid):
         super().__init__(params, grid)
         self.init = False
@@ -19,7 +20,7 @@ class HumanAgent(Agent):
         self.ax = ax
         self.pos = {(x, y): (x, -y) for x, y in grid.graph.nodes()}
         self.done = True
-        self.paused = True
+        self.paused = HumanAgent.useButton
         conButtonAx = fig.add_axes([0, 0.175, 0.1, 0.1], aspect='equal', frameon=False)  # x, y, width, height
         exitButtonAx = fig.add_axes([0, 0.05, 0.1, 0.1], aspect='equal', frameon=False)  # x, y, width, height
         conCircle = mpatches.Circle((0.5, 0.5), 0.5, color='red', transform=conButtonAx.transAxes)
@@ -80,7 +81,7 @@ class HumanAgent(Agent):
             Edge: The next edge the Human agent traverses in the next step.
         """
         super().AgentStep(grid, agents, i)
-        self.paused = True
+        self.paused = HumanAgent.useButton
         self.conButton.on_clicked(self.ConButtonClick)
         self.exitButton.on_clicked(self.ExitButtonClick)
 
