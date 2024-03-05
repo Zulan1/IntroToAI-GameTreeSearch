@@ -56,7 +56,8 @@ class MultiAgent(SearchAgent, ABC):
         self.cutoff = 0
         self.agentNum: int
         self.maxKeyFunc: Callable
-        self.canBePruned: bool
+        self.allowPruning: bool
+        # self.defaultVal: Tuple[float, float, list[Node], list[Node]]
 
     @property
     def name(self):
@@ -225,7 +226,10 @@ class MultiAgent(SearchAgent, ABC):
             Tuple[float, float, list[Node], list[Node]]: A tuple containing the evaluation score,
             the maximum score, a list of nodes, and a list of nodes.
         """
-
+    @abstractmethod
+    def ReverseV(self, v):
+        return [-v[0], -v[1], v[3], v[2]]
+    
     def MaxValue(self, state: State, action: Node, alpha: Tuple[float, float, list[Node], list[Node]],
                  negBeta: Tuple[float, float, list[Node], list[Node]]) -> int:
         """
@@ -258,14 +262,13 @@ class MultiAgent(SearchAgent, ABC):
         if nextState.CutoffTest(actions):
             return nextAgent.Eval(nextState)
 
-        v = (float('-inf'), float('-inf'), None, None)
-        def ReverseV(v):
-            return [-v[0], -v[1], v[3], v[2]]
+        v = (float('-inf'), float('-inf'), float('-inf'), None, None)
+
         for nextAction in actions:
-            maxValue = ReverseV(self.MaxValue(nextState, nextAction, negBeta, alpha))
+            maxValue = self.ReverseV(self.MaxValue(nextState, nextAction, negBeta, alpha))
             v = max(v, maxValue, key=self.maxKeyFunc)
-            if self.canBePruned:
-                if negBeta == max(negBeta, ReverseV(v), key=self.maxKeyFunc):
+            if self.allowPruning:
+                if negBeta == max(negBeta, self.ReverseV(v), key=self.maxKeyFunc):
                     MultiAgent.pruneCount += 1
                     return v
                 alpha = max(alpha, v, key=self.maxKeyFunc)

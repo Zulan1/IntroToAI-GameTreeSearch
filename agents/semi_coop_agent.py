@@ -4,13 +4,13 @@ from agents.multi_agent import MultiAgent, State
 from grid import Grid
 from type_aliases import Node
 
-class AdversarialAgent(MultiAgent):
-    """Adversarial Agent Class"""
+class SemiCoopAgent(MultiAgent):
+    """Semi Cooperative Agent Class"""
     def __init__(self, params: list[str], _: Grid) -> None:
         super().__init__(params, _)
-        self.maxKeyFunc: Callable = lambda x: (x[0], x[1], -len(x[3]) if x[3] else float('-inf'))
-        self.allowPruning: bool = True
-        self.defaultVal: float = float('inf')
+        self.maxKeyFunc: Callable = lambda x: (x[1], x[2], -len(x[3]) if x[3] else float('-inf'), -len(x[4]) if x[4] else float('-inf'))
+        self.allowPruning: bool = False
+
     def Eval(self, state: State) -> list[float, float, list[Node]]:
         """
         Evaluates the given state and returns the difference in evaluation values between the agent and the other agent,
@@ -29,8 +29,8 @@ class AdversarialAgent(MultiAgent):
         otherEval: float = state.otherAgent.AgentEval(state.grid)
         seq: list[Node] = state.agent.seq
         otherSeq: list[Node] = state.otherAgent.seq
-        diffVal = selfEval - otherEval
-        return [round(diffVal, 1), round(selfEval, 1), round(otherEval, 1), seq, otherSeq]
+        diffEval = selfEval - otherEval
+        return [round(diffEval,1), round(selfEval, 1), round(otherEval, 1), seq, otherSeq]
 
     def ReverseV(self, v):
-        return [-v[0], -v[1], v[2], v[4], v[3]]
+        return [v[0], v[2], v[1], v[4], v[3]]
