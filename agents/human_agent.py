@@ -6,7 +6,6 @@ import networkx as nx
 from type_aliases import Node, Edge
 from agents.agent import Agent
 from agents.search_agent import SearchAgent
-from agents.interfering_agent import InterferingAgent
 from grid import Grid
 
 class HumanAgent(Agent):
@@ -38,10 +37,9 @@ class HumanAgent(Agent):
         greenHandle = mpatches.Patch(color='green', label='- Active Dropoff')
         purpleHandle = mpatches.Patch(color='purple', label='- Passive Dropoff')
         blueHandle = mpatches.Patch(color='blue', label='- Agent/s')
-        redHandle = mpatches.Patch(color='red', label='- Interfering')
         orangeHandle = mpatches.Patch(color='orange', label='- Human')
         self.handles = [iHandle, scoreHandle, brownHandle, greenHandle,
-                        purpleHandle, blueHandle, redHandle, orangeHandle]
+                        purpleHandle, blueHandle, orangeHandle]
         self.legend = plt.legend(handles=self.handles)
         plt.ion()
         plt.show()
@@ -95,26 +93,18 @@ class HumanAgent(Agent):
             for agent in agents:
                 if isinstance(agent, HumanAgent) and agent.coordinates == node:
                     colors.add('orange')
-                if isinstance(agent, InterferingAgent) and agent.coordinates == node:
-                    colors.add('red')
                 if isinstance(agent, SearchAgent):
                     if node in agent.packages:
                         colors.add('green')
                     if agent.coordinates == node:
                         colors.add('#0000FF')
-                # if isinstance(agent, MultiAgent):
-                #     if node in agent.agent1.packages or node in agent.agent2.packages:
-                #         colors.add('green')
-                #     if agent.agent1.coordinates == node or agent.agent2.coordinates == node:
-                #         colors.add('#0000FF')
             if not colors:
                 colors.add('#069AF3')
             self.DrawMultiColoredNode(node, colors)
 
         nx.draw_networkx_labels(grid.graph, self.pos, ax=self.ax)
         iHandle = mpatches.Patch(color='none', label=f'i = {i}')
-        score = tuple([agent.score for agent in agents if isinstance(agent, SearchAgent)]) #+\
-            # [(agent.agent1.score, agent.agent2.score) for agent in agents if isinstance(agent, MultiAgent)])[0]
+        score = tuple([agent.score for agent in agents if isinstance(agent, SearchAgent)])
         scoreHandle = mpatches.Patch(color='none', label=f'score = {score}')
         self.handles[0] = iHandle
         self.handles[1] = scoreHandle

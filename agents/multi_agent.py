@@ -269,8 +269,8 @@ class MultiAgent(SearchAgent, ABC):
         if self.coordinates != action and nextState.IsVisited():
             retval = MultiAgent.visitedStates[nextState][1]
             seqPrefix = nextAgent.seq
-            newSeq = seqPrefix + retval[2][len(seqPrefix):]
-            retval[2] = newSeq
+            newSeq = seqPrefix + retval[3][len(seqPrefix):]
+            retval[3] = newSeq
             return retval
         MultiAgent.iterations += 1
 
