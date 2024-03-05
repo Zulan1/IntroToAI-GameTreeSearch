@@ -24,8 +24,10 @@ def Main():
     while any(agent.done is not True for agent in agents) and i <= Agent.lastDropOffTime:
         for agent in agents:
             action = agent.AgentStep(grid, agents, i)
-            agent.ProcessStep(grid, action, i)
+            agent.ProcessStep(grid, action, i + 1)
         i += 1
-
+    
+    _ = [print(f"Agent {i} Agent Score:{agent.score}, Sequence:{agent.totalseq}") for i, agent in enumerate(agents) if isinstance(agent, MultiAgent)]
+     
 if __name__ == "__main__":
     Main()

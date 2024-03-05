@@ -14,6 +14,7 @@ class SearchAgent(Agent, ABC):
         self._packages: dict[Node, list[Package]] = {}
         self.cost = 0
         self._score: int = 0
+        self.totalseq: list[Node] = []
 
     @property
     def packages(self) -> dict[Node, list[Package]]:
@@ -61,12 +62,15 @@ class SearchAgent(Agent, ABC):
             return self.AgentStep(grid, agents, i)
         self.seq = self.seq[1:]
         self.cost += 1
+        if action:
+            self.totalseq.append(action[1])
         return action
 
     def ProcessStep(self, grid: Grid, action: Edge = None, i: int = 0):
         super().ProcessStep(grid, action)
         self.PickPackagesFromNode(grid, i)
         self.DropPackage(i)
+        
 
     def PickPackagesFromNode(self, grid: Grid, i: int) -> None:
         """add package to agent when he is on the package's pickup location.
