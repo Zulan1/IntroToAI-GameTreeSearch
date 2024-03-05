@@ -51,3 +51,5 @@ class AgentType(Enum):
     INTERFERING = 'I'
     MULTI_AGNENT = 'MA'
     ADVERSARIAL = 'AD'
+    SEMI_COOP = 'SC'
+    COOP = 'C'

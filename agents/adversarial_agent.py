@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Callable
 from agents.multi_agent import MultiAgent, State
 from grid import Grid
-from type_aliases import Node
+from type_aliases import Node, MinimaxValueType
 
 class AdversarialAgent(MultiAgent):
     """Adversarial Agent Class"""
@@ -11,7 +11,7 @@ class AdversarialAgent(MultiAgent):
         self.maxKeyFunc: Callable = lambda x: (x[0], x[1], -len(x[3]) if x[3] else float('-inf'))
         self.allowPruning: bool = True
         self.defaultVal: float = float('inf')
-    def Eval(self, state: State) -> list[float, float, list[Node]]:
+    def Eval(self, state: State) -> MinimaxValueType:
         """
         Evaluates the given state and returns the difference in evaluation values between the agent and the other agent,
         the evaluation value of the agent itself, the sequence of nodes for the agent,
@@ -32,5 +32,17 @@ class AdversarialAgent(MultiAgent):
         diffVal = selfEval - otherEval
         return [round(diffVal, 1), round(selfEval, 1), round(otherEval, 1), seq, otherSeq]
 
-    def ReverseV(self, v):
+    def ReverseV(self, v: MinimaxValueType) -> MinimaxValueType:
         return [-v[0], -v[1], v[2], v[4], v[3]]
+
+    def ToDebugFormat(self, v: MinimaxValueType) -> MinimaxValueType:
+        """
+        Converts the given MinimaxValueType to a debug format.
+
+        Args:
+            v (MinimaxValueType): The MinimaxValueType to convert.
+
+        Returns:
+            MinimaxValueType: The converted MinimaxValueType in debug format.
+        """
+        return v[0], v[1], v[3], v[4]

@@ -5,11 +5,15 @@ from agents.agent import Agent, AgentType
 from agents.human_agent import HumanAgent
 from agents.multi_agent import MultiAgent
 from agents.adversarial_agent import AdversarialAgent
+from agents.semi_coop_agent import SemiCoopAgent
+from agents.coop_agent import CoopAgent
 from type_aliases import Node
 
 agent_classes = {
     AgentType.HUMAN.value: HumanAgent,
     AgentType.ADVERSARIAL.value: AdversarialAgent,
+    AgentType.SEMI_COOP.value: SemiCoopAgent,
+    AgentType.COOP.value: CoopAgent,
 }
 
 def InitGrid(initFilePath: str) -> Tuple[Grid, list[Agent]]:

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Callable
 from agents.multi_agent import MultiAgent, State
 from grid import Grid
-from type_aliases import Node
+from type_aliases import Node, MinimaxValueType
 
 class CoopAgent(MultiAgent):
     """Cooperative Agent Class"""
@@ -34,3 +34,15 @@ class CoopAgent(MultiAgent):
 
     def ReverseV(self, v):
         return [v[0], v[2], v[1], v[4], v[3]]
+
+    def ToDebugFormat(self, v: MinimaxValueType) -> MinimaxValueType:
+        """
+        Converts the given MinimaxValueType to a debug format.
+
+        Args:
+            v (MinimaxValueType): The MinimaxValueType to convert.
+
+        Returns:
+            MinimaxValueType: The converted MinimaxValueType in debug format.
+        """
+        return v[0], v[1], v[3], v[4]

@@ -6,7 +6,7 @@ from typing import Tuple, Generator, Callable
 from agents.search_agent import SearchAgent
 from agents.agent import Agent
 from grid import Grid
-from type_aliases import Node, Edge
+from type_aliases import Node, Edge, MinimaxValueType
 
 class MultiAgent(SearchAgent, ABC):
     """
@@ -49,7 +49,7 @@ class MultiAgent(SearchAgent, ABC):
     iterations: int = 0
     pruneCount: int = 0
     visitedCount: int = 0
-    visitedStates: dict[State, int] = {}
+    visitedStates: dict[State, Tuple[list[Node], MinimaxValueType]] = {}
 
     def __init__(self, params: list[str], _: Grid) -> None:
         super().__init__(params, _)
@@ -57,7 +57,6 @@ class MultiAgent(SearchAgent, ABC):
         self.agentNum: int
         self.maxKeyFunc: Callable
         self.allowPruning: bool
-        # self.defaultVal: Tuple[float, float, list[Node], list[Node]]
 
     @property
     def name(self):
@@ -144,16 +143,27 @@ class MultiAgent(SearchAgent, ABC):
         print(f'Starting Search for step {self.cost} for agent {self.agentNum + 1}')
         otherAgent = ([agent for agent in agents if agent != self and isinstance(agent, MultiAgent)] or [None])[0]
         assert otherAgent is not None, "No other adversarial agent found"
-        MultiAgent.visitedStates: dict[State, int] = {}
-        alpha = (float('-inf'), float('-inf'), None, None)
-        negBeta = (float('-inf'), float('-inf'), None, None)
-        self.cutoff = MultiAgent.cutOffLimit + self.cost
+        MultiAgent.visitedStates: dict[State, Tuple[list[Node], MinimaxValueType]] = {}
+        alpha: MinimaxValueType = (float('-inf'), float('-inf'), None, None)
+        negBeta: MinimaxValueType = (float('-inf'), float('-inf'), None, None)
+        self.cutoff: int = MultiAgent.cutOffLimit + self.cost
         otherAgent.cutoff = MultiAgent.cutOffLimit + otherAgent.cost
-        state = State(grid, self, otherAgent)
+        state: State = State(grid, self, otherAgent)
         return self.AlphaBetaSearch(state, alpha, negBeta)
 
-    def AlphaBetaSearch(self, state: State, alpha: tuple[float, float, list[Node], list[Node]],
-                        negBeta: tuple[float, float, list[Node], list[Node]]) -> list[Node]:
+    @abstractmethod
+    def ToDebugFormat(self, v: MinimaxValueType) -> MinimaxValueType:
+        """
+        Converts the given value to a debug format.
+
+        Args:
+            v (MinimaxValueType): The value to be converted.
+
+        Returns:
+            MinimaxValueType: The value in debug format.
+        """
+
+    def AlphaBetaSearch(self, state: State, alpha: MinimaxValueType, negBeta: MinimaxValueType) -> list[Node]:
         """
         Performs an alpha-beta search on the given state.
 
@@ -174,8 +184,7 @@ class MultiAgent(SearchAgent, ABC):
         def Key(action: Node) -> Tuple[int, int, list[Node]]:
             nonlocal optionNum
             MultiAgent.pruneCount, MultiAgent.visitedCount, MultiAgent.iterations = 0, 0, 0
-            v = self.MaxValue(state, action, alpha, negBeta)
-            v = [-v[0], -v[1], v[3], v[2]]
+            v = self.ToDebugFormat(self.ReverseV(self.MaxValue(state, action, alpha, negBeta)))
             print(f"Option ({optionNum}): Action: {action}, Value: {v[:2]}, iterations: {MultiAgent.iterations}, "
                   f"Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
                   f"Seq: {v[2]}\nOpponent Predicted Seq: {v[3]}\n")
@@ -228,10 +237,17 @@ class MultiAgent(SearchAgent, ABC):
         """
     @abstractmethod
     def ReverseV(self, v):
-        return [-v[0], -v[1], v[3], v[2]]
-    
-    def MaxValue(self, state: State, action: Node, alpha: Tuple[float, float, list[Node], list[Node]],
-                 negBeta: Tuple[float, float, list[Node], list[Node]]) -> int:
+        """
+        Reverses the value 'v'.
+
+        Parameters:
+        v (any): The value to be reversed.
+
+        Returns:
+        any: The reversed value.
+        """
+
+    def MaxValue(self, state: State, action: Node, alpha: MinimaxValueType, negBeta: MinimaxValueType) -> int:
         """
         Performs the MinValue step in the minimax algorithm for adversarial search.
 
@@ -262,7 +278,7 @@ class MultiAgent(SearchAgent, ABC):
         if nextState.CutoffTest(actions):
             return nextAgent.Eval(nextState)
 
-        v = (float('-inf'), float('-inf'), float('-inf'), None, None)
+        v: MinimaxValueType = (float('-inf'), float('-inf'), float('-inf'), None, None)
 
         for nextAction in actions:
             maxValue = self.ReverseV(self.MaxValue(nextState, nextAction, negBeta, alpha))
