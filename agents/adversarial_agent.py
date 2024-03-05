@@ -11,6 +11,7 @@ class AdversarialAgent(MultiAgent):
         self.maxKeyFunc: Callable = lambda x: (x[0], x[1], -len(x[3]) if x[3] else float('-inf'))
         self.allowPruning: bool = True
         self.defaultVal: float = float('inf')
+
     def Eval(self, state: State) -> MinimaxValueType:
         """
         Evaluates the given state and returns the difference in evaluation values between the agent and the other agent,

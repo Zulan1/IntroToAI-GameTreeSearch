@@ -276,10 +276,9 @@ class MultiAgent(SearchAgent, ABC):
         MultiAgent.iterations += 1
 
         actions = nextOtherAgent.GetActions(nextGrid)
-        isCutoff = nextState.CutoffTest(actions)
-        if isCutoff[0] or isCutoff[1]:
+        if nextState.CutoffTest(actions):
             v = nextAgent.Eval(nextState)
-            return v if isCutoff[0] else self.ReverseV(v)
+            return v if len(nextAgent.seq) == len(nextOtherAgent.seq) else self.ReverseV(v)
 
         v: MinimaxValueType = (float('-inf'), float('-inf'), float('-inf'), None, None)
 
@@ -372,14 +371,14 @@ class State:
             return True
         return False
 
-    def CutoffTest(self, actions: set[Node]) -> Generator[bool, bool]:
+    def CutoffTest(self, actions: set[Node]) -> bool:
         """
         Checks if the cutoff test condition is satisfied.
 
         Args:
             actions (set[Node]): The set of possible actions.
 
-        Yields:
+        Returns:
             bool: True if the cutoff test condition is satisfied, False otherwise.
         """
 
@@ -388,4 +387,4 @@ class State:
         nextOtherAgent: MultiAgent
         nextGrid, nextAgent, nextOtherAgent = self
         nodes = nextAgent.FormulateGoal(nextGrid, None).union(nextOtherAgent.FormulateGoal(nextGrid, None))
-        return (self.otherAgent.cost == self.otherAgent.cutoff, not actions or not nodes)
+        return self.otherAgent.cost == self.otherAgent.cutoff or not actions or not nodes
