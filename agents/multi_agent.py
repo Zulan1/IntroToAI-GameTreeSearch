@@ -144,13 +144,15 @@ class MultiAgent(SearchAgent, ABC):
         otherAgent = ([agent for agent in agents if agent != self and isinstance(agent, MultiAgent)] or [None])[0]
         assert otherAgent is not None, "No other adversarial agent found"
         MultiAgent.visitedStates: dict[State, int] = {}
-        alpha = [(float('-inf'), float('-inf'), None, None), (float('-inf'), float('-inf'), None, None)]
+        alpha = (float('-inf'), float('-inf'), None, None)
+        negBeta = (float('-inf'), float('-inf'), None, None)
         self.cutoff = MultiAgent.cutOffLimit + self.cost
         otherAgent.cutoff = MultiAgent.cutOffLimit + otherAgent.cost
         state = State(grid, self, otherAgent)
-        return self.AlphaBetaSearch(state, alpha)
+        return self.AlphaBetaSearch(state, alpha, negBeta)
 
-    def AlphaBetaSearch(self, state: State, alpha: tuple[float, float, list[Node], list[Node]]) -> list[Node]:
+    def AlphaBetaSearch(self, state: State, alpha: tuple[float, float, list[Node], list[Node]],
+                        negBeta: tuple[float, float, list[Node], list[Node]]) -> list[Node]:
         """
         Performs an alpha-beta search on the given state.
 
@@ -171,10 +173,11 @@ class MultiAgent(SearchAgent, ABC):
         def Key(action: Node) -> Tuple[int, int, list[Node]]:
             nonlocal optionNum
             MultiAgent.pruneCount, MultiAgent.visitedCount, MultiAgent.iterations = 0, 0, 0
-            v = self.MaxValue(state, action, alpha[:])
-            print(f"Option ({optionNum}): Action: {action}, Value: {v[0][:2]}, iterations: {MultiAgent.iterations}, "
+            v = self.MaxValue(state, action, alpha, negBeta)
+            v = [-v[0], -v[1], v[3], v[2]]
+            print(f"Option ({optionNum}): Action: {action}, Value: {v[:2]}, iterations: {MultiAgent.iterations}, "
                   f"Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
-                  f"Seq: {v[0][2]}\nOpponent Predicted Seq: {v[1][2]}\n")
+                  f"Seq: {v[2]}\nOpponent Predicted Seq: {v[3]}\n")
             optionNum += 1
             return self.maxKeyFunc(v)
         nextAction = max(actions, key=Key) if len(actions) > 1 else actions[0]
@@ -223,7 +226,8 @@ class MultiAgent(SearchAgent, ABC):
             the maximum score, a list of nodes, and a list of nodes.
         """
 
-    def MaxValue(self, state: State, action: Node, alpha: Tuple[Tuple[float, float, list[Node], list[Node]]]) -> int:
+    def MaxValue(self, state: State, action: Node, alpha: Tuple[float, float, list[Node], list[Node]],
+                 negBeta: Tuple[float, float, list[Node], list[Node]]) -> int:
         """
         Performs the MinValue step in the minimax algorithm for adversarial search.
 
@@ -245,27 +249,29 @@ class MultiAgent(SearchAgent, ABC):
         if self.coordinates != action and nextState.IsVisited():
             retval = MultiAgent.visitedStates[nextState][1]
             seqPrefix = nextAgent.seq
-            newSeq = seqPrefix + retval[0][2][len(seqPrefix):]
-            retval[0][2] = newSeq
+            newSeq = seqPrefix + retval[2][len(seqPrefix):]
+            retval[2] = newSeq
             return retval
         MultiAgent.iterations += 1
 
         actions = nextOtherAgent.GetActions(nextGrid)
         if nextState.CutoffTest(actions):
-            return [nextAgent.Eval(nextGrid, nextOtherAgent), nextOtherAgent.Eval(nextGrid, nextAgent)]
+            return nextAgent.Eval(nextState)
 
-        v = [(float('-inf'), float('-inf'), None, None), (float('-inf'), float('-inf'), None, None)]
+        v = (float('-inf'), float('-inf'), None, None)
+        def ReverseV(v):
+            return [-v[0], -v[1], v[3], v[2]]
         for nextAction in actions:
-            maxValue = self.MaxValue(nextState, nextAction, copy.deepcopy(alpha[::-1]))
+            maxValue = ReverseV(self.MaxValue(nextState, nextAction, negBeta, alpha))
             v = max(v, maxValue, key=self.maxKeyFunc)
             if self.canBePruned:
-                if alpha[::-1] == max(alpha[::-1], v, key=self.maxKeyFunc):
+                if negBeta == max(negBeta, ReverseV(v), key=self.maxKeyFunc):
                     MultiAgent.pruneCount += 1
-                    return v[::-1]
-                alpha[1] = max([alpha[1]], [v[1]], key=self.maxKeyFunc)[0]
+                    return v
+                alpha = max(alpha, v, key=self.maxKeyFunc)
 
-        MultiAgent.visitedStates[nextState] = (nextAgent.seq, v[::-1])
-        return v[::-1]
+        MultiAgent.visitedStates[nextState] = (nextAgent.seq, v)
+        return v
 
 
 class State:
