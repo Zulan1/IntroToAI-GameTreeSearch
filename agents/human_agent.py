@@ -6,6 +6,7 @@ import networkx as nx
 from type_aliases import Node, Edge
 from agents.agent import Agent
 from agents.search_agent import SearchAgent
+from agents.multi_agent import MultiAgent
 from grid import Grid
 
 class HumanAgent(Agent):
@@ -33,13 +34,15 @@ class HumanAgent(Agent):
         self.exitButton.label.set_fontsize(14)
         iHandle = mpatches.Patch(color='none', label='i = 0')
         scoreHandle = mpatches.Patch(color='none', label='Score = 0')
+        cutoffHandle = mpatches.Patch(color='none', label=f'cutoff = {MultiAgent.cutOffLimit}')
         brownHandle = mpatches.Patch(color='brown', label='- Pickup')
         greenHandle = mpatches.Patch(color='green', label='- Active Dropoff')
         purpleHandle = mpatches.Patch(color='purple', label='- Passive Dropoff')
+        redHandle = mpatches.Patch(color='red', label='- Missed Dropoff')
         blueHandle = mpatches.Patch(color='blue', label='- Agent/s')
         orangeHandle = mpatches.Patch(color='orange', label='- Human')
-        self.handles = [iHandle, scoreHandle, brownHandle, greenHandle,
-                        purpleHandle, blueHandle, orangeHandle]
+        self.handles = [iHandle, scoreHandle, cutoffHandle, brownHandle, greenHandle,
+                        purpleHandle, redHandle, blueHandle, orangeHandle]
         self.legend = plt.legend(handles=self.handles)
         plt.ion()
         plt.show()
@@ -95,7 +98,10 @@ class HumanAgent(Agent):
                     colors.add('orange')
                 if isinstance(agent, SearchAgent):
                     if node in agent.packages:
-                        colors.add('green')
+                        if any(p.dropOffMaxTime >= agent.cost for p in agent.packages[node]):
+                            colors.add('green')
+                        else:
+                            colors.add('red')
                     if agent.coordinates == node:
                         colors.add('#0000FF')
             if not colors:

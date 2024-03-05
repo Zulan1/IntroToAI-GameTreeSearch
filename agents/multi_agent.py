@@ -184,10 +184,11 @@ class MultiAgent(SearchAgent, ABC):
         def Key(action: Node) -> Tuple[int, int, list[Node]]:
             nonlocal optionNum
             MultiAgent.pruneCount, MultiAgent.visitedCount, MultiAgent.iterations = 0, 0, 0
-            v = self.ToDebugFormat(self.ReverseV(self.MaxValue(state, action, alpha, negBeta)))
-            print(f"Option ({optionNum}): Action: {action}, Value: {v[:2]}, iterations: {MultiAgent.iterations}, "
-                  f"Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
-                  f"Seq: {v[2]}\nOpponent Predicted Seq: {v[3]}\n")
+            v = self.ReverseV(self.MaxValue(state, action, alpha, negBeta))
+            vInDebug = self.ToDebugFormat(v)
+            print(f"Option ({optionNum}): Action: {action}, Value: {vInDebug[:2]}, iterations: {MultiAgent.iterations}"
+                  f", Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
+                  f"Seq: {vInDebug[2]}\nOpponent Predicted Seq: {vInDebug[3]}\n")
             optionNum += 1
             return self.maxKeyFunc(v)
         nextAction = max(actions, key=Key) if len(actions) > 1 else actions[0]
@@ -219,8 +220,8 @@ class MultiAgent(SearchAgent, ABC):
         Returns:
             float: The evaluation score of the agent.
         """
-        return self.score + 0.5 * len(sum(self.packages.values(), [])) +\
-            0.2 * len(sum(grid.packages.values(), []))
+        return self.score + 0.5 * len([p for p, d in self.GetDropdowns() if d >= self.cost]) +\
+            0.2 * len([p for p, d in grid.GetDropdowns() if d >= self.cost])
 
     @abstractmethod
     def Eval(self, state: State) -> list[float, float, list[Node], list[Node]]:
@@ -275,8 +276,10 @@ class MultiAgent(SearchAgent, ABC):
         MultiAgent.iterations += 1
 
         actions = nextOtherAgent.GetActions(nextGrid)
-        if nextState.CutoffTest(actions):
-            return nextAgent.Eval(nextState)
+        isCutoff = nextState.CutoffTest(actions)
+        if isCutoff[0] or isCutoff[1]:
+            v = nextAgent.Eval(nextState)
+            return v if isCutoff[0] else self.ReverseV(v)
 
         v: MinimaxValueType = (float('-inf'), float('-inf'), float('-inf'), None, None)
 
@@ -369,15 +372,15 @@ class State:
             return True
         return False
 
-    def CutoffTest(self, actions: set[Node]) -> bool:
+    def CutoffTest(self, actions: set[Node]) -> Generator[bool, bool]:
         """
-        Checks if the cutoff test should be applied based on the given actions.
+        Checks if the cutoff test condition is satisfied.
 
         Args:
             actions (set[Node]): The set of possible actions.
 
-        Returns:
-            bool: True if the cutoff test should be applied, False otherwise.
+        Yields:
+            bool: True if the cutoff test condition is satisfied, False otherwise.
         """
 
         nextGrid: Grid
@@ -385,6 +388,4 @@ class State:
         nextOtherAgent: MultiAgent
         nextGrid, nextAgent, nextOtherAgent = self
         nodes = nextAgent.FormulateGoal(nextGrid, None).union(nextOtherAgent.FormulateGoal(nextGrid, None))
-        if self.otherAgent.cost == self.otherAgent.cutoff or not actions or not nodes:
-            return True
-        return False
+        return (self.otherAgent.cost == self.otherAgent.cutoff, not actions or not nodes)
