@@ -90,7 +90,7 @@ class MultiAgent(SearchAgent, ABC):
         actions = GetNeighbors(grid, self.coordinates)
         if any(self.coordinates == p.pickupLoc and self.cost < p.pickupTime
                 for p in sum(grid.packages.values(), [])):
-            print(f"Agent is at {self.coordinates} and might need to wait")
+            # print(f"Agent is at {self.coordinates} and might need to wait")
             actions.add(self.coordinates)
         return self.SortActions(actions, grid)
 
@@ -152,7 +152,7 @@ class MultiAgent(SearchAgent, ABC):
         return self.AlphaBetaSearch(state, alpha, negBeta)
 
     @abstractmethod
-    def ToDebugFormat(self, v: MinimaxValueType) -> MinimaxValueType:
+    def DebugMessage(self, v: MinimaxValueType, action: Node, optionNum: int) -> MinimaxValueType:
         """
         Converts the given value to a debug format.
 
@@ -185,10 +185,11 @@ class MultiAgent(SearchAgent, ABC):
             nonlocal optionNum
             MultiAgent.pruneCount, MultiAgent.visitedCount, MultiAgent.iterations = 0, 0, 0
             v = self.ReverseV(self.MaxValue(state, action, alpha, negBeta))
-            vInDebug = self.ToDebugFormat(v)
-            print(f"Option ({optionNum}): Action: {action}, Value: {vInDebug[:2]}, iterations: {MultiAgent.iterations}"
-                  f", Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
-                  f"Seq: {vInDebug[2]}\nOpponent Predicted Seq: {vInDebug[3]}\n")
+            # print(v[:3])
+            print(self.DebugMessage(v, action, optionNum))
+            # print(f"Option ({optionNum}): Action: {action}, Value: {vInDebug[:2]}, iterations: {MultiAgent.iterations}"
+            #       f", Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
+            #       f"Seq: {vInDebug[2]}\nOpponent Predicted Seq: {vInDebug[3]}\n")
             optionNum += 1
             return self.maxKeyFunc(v)
         nextAction = max(actions, key=Key) if len(actions) > 1 else actions[0]
@@ -365,8 +366,6 @@ class State:
             bool: True if the state has been visited, False otherwise.
         """
         if self in MultiAgent.visitedStates:
-            # agent = self.agent if not self.reversed else self.otherAgent
-            # if len(MultiAgent.visitedStates[self][0]) == len(agent.seq):
             MultiAgent.visitedCount += 1
             return True
         return False

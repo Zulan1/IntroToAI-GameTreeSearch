@@ -36,7 +36,7 @@ class SemiCoopAgent(MultiAgent):
     def ReverseV(self, v):
         return [v[0], v[2], v[1], v[4], v[3]]
 
-    def ToDebugFormat(self, v: MinimaxValueType) -> MinimaxValueType:
+    def DebugMessage(self, v: MinimaxValueType, action: Node, optionNum: int) -> MinimaxValueType:
         """
         Converts the given MinimaxValueType to a debug format.
 
@@ -46,4 +46,7 @@ class SemiCoopAgent(MultiAgent):
         Returns:
             MinimaxValueType: The converted MinimaxValueType in debug format.
         """
-        return v[1], v[2], v[3], v[4]
+        return (f"Option ({optionNum}): Action: {action}, Self Estimation Value: {v[1]}, "
+                f"Opponent Estimation Value: {v[2]}, iterations: {MultiAgent.iterations}, "
+                f"Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
+                f"Sequence: {v[3]}\nOpponent Predicted Sequence: {v[4]}\n")

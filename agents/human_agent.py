@@ -39,10 +39,11 @@ class HumanAgent(Agent):
         greenHandle = mpatches.Patch(color='green', label='- Active Dropoff')
         purpleHandle = mpatches.Patch(color='purple', label='- Passive Dropoff')
         redHandle = mpatches.Patch(color='red', label='- Missed Dropoff')
-        blueHandle = mpatches.Patch(color='blue', label='- Agent/s')
-        orangeHandle = mpatches.Patch(color='orange', label='- Human')
+        blueHandle = mpatches.Patch(color='blue', label='- Agent 1')
+        orangeHandle = mpatches.Patch(color='orange', label='- Agent 2')
+        grayHandle = mpatches.Patch(color='gray', label='- Human')
         self.handles = [iHandle, scoreHandle, cutoffHandle, brownHandle, greenHandle,
-                        purpleHandle, redHandle, blueHandle, orangeHandle]
+                        purpleHandle, redHandle, blueHandle, orangeHandle, grayHandle]
         self.legend = plt.legend(handles=self.handles)
         plt.ion()
         plt.show()
@@ -95,7 +96,7 @@ class HumanAgent(Agent):
                 colors.add('brown')
             for agent in agents:
                 if isinstance(agent, HumanAgent) and agent.coordinates == node:
-                    colors.add('orange')
+                    colors.add('gray')
                 if isinstance(agent, SearchAgent):
                     if node in agent.packages:
                         if any(p.dropOffMaxTime >= agent.cost for p in agent.packages[node]):
@@ -103,7 +104,8 @@ class HumanAgent(Agent):
                         else:
                             colors.add('red')
                     if agent.coordinates == node:
-                        colors.add('#0000FF')
+                        color = '#0000FF' if agent.agentNum == 0 else 'orange'
+                        colors.add(color)
             if not colors:
                 colors.add('#069AF3')
             self.DrawMultiColoredNode(node, colors)
