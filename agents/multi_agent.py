@@ -45,7 +45,7 @@ class MultiAgent(SearchAgent, ABC):
             Performs the MinValue step in the minimax algorithm for adversarial search.
     """
 
-    cutOffLimit: int = 11
+    cutOffLimit: int = 10
     iterations: int = 0
     pruneCount: int = 0
     visitedCount: int = 0
@@ -96,7 +96,7 @@ class MultiAgent(SearchAgent, ABC):
 
     def SortActions(self, actions: set[Node], grid: Grid) -> list[Node]:
         """
-        Sorts the given set of actions based on the current state of the grid.
+        Sorts possible moves by Dijkstra length from packages based on the current state of the grid.
 
         Args:
             actions (set[Node]): The set of actions to sort.
