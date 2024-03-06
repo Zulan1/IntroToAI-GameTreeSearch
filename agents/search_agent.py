@@ -7,6 +7,9 @@ from package import Package
 from type_aliases import Node, Edge
 
 class SearchAgent(Agent, ABC):
+
+    dropOffTimes: list[Package] = []
+
     """abstract class for search agents"""
     def __init__(self, params: list[str], _: Grid) -> None:
         super().__init__(params, _)
@@ -70,7 +73,6 @@ class SearchAgent(Agent, ABC):
         super().ProcessStep(grid, action)
         self.PickPackagesFromNode(grid, i)
         self.DropPackage(i)
-        
 
     def PickPackagesFromNode(self, grid: Grid, i: int) -> None:
         """add package to agent when he is on the package's pickup location.
@@ -88,6 +90,8 @@ class SearchAgent(Agent, ABC):
             for package in self._packages[self._coordinates]:
                 if i > package.dropOffMaxTime: continue
                 self._score += 1
+                if package not in SearchAgent.dropOffTimes: continue
+                SearchAgent.dropOffTimes.remove(package)
             del self._packages[self._coordinates]
 
     def GetPickups(self) -> Tuple[Tuple[Node, int]]:

@@ -92,7 +92,8 @@ class HumanAgent(Agent):
             colors: set[str] = set()
             for package in sum(grid.packages.values(), []):
                 if node == package.dropoffLoc:
-                    colors.add('purple')
+                    color = 'purple' if package.dropOffMaxTime >= i else 'red'
+                    colors.add(color)
             if node in grid.packages.keys():
                 colors.add('brown')
             for agent in agents:

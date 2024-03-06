@@ -3,10 +3,12 @@ import networkx as nx
 from grid import Grid, UpdateGridType
 from agents.agent import Agent, AgentType
 from agents.human_agent import HumanAgent
+from agents.search_agent import SearchAgent
 from agents.multi_agent import MultiAgent
 from agents.adversarial_agent import AdversarialAgent
 from agents.semi_coop_agent import SemiCoopAgent
 from agents.coop_agent import CoopAgent
+from package import Package
 from type_aliases import Node
 
 agent_classes = {
@@ -42,6 +44,9 @@ def InitGrid(initFilePath: str) -> Tuple[Grid, list[Agent]]:
         # if action is of updating the grid type then call UpdateGrid
         if any(action == updateGridType.value for updateGridType in UpdateGridType):
             grid.UpdateGrid(action, line[1:])
+
+    SearchAgent.dropOffTimes = sum(grid.packages.values(), [])
+    SearchAgent.dropOffTimes.sort(key=lambda x: x.dropOffMaxTime, reverse=True)
 
     Grid.numOfPackages = len(sum(grid.packages.values(), []))
 
@@ -82,7 +87,7 @@ def Dijkstra(g: nx.Graph, start: Node, end: Node) -> list[Node]:
         if u == end:
             break
         for v in g.neighbors(u):
-            alt = dist[u] + g[u][v].get('weight', 1)
+            alt = dist.get(u, float('inf')) + g[u][v].get('weight', 1)
             if alt < dist.get(v, float('inf')):
                 dist[v] = alt
                 prev[v] = u

@@ -185,11 +185,7 @@ class MultiAgent(SearchAgent, ABC):
             nonlocal optionNum
             MultiAgent.pruneCount, MultiAgent.visitedCount, MultiAgent.iterations = 0, 0, 0
             v = self.ReverseV(self.MaxValue(state, action, alpha, negBeta))
-            # print(v[:3])
             print(self.DebugMessage(v, action, optionNum))
-            # print(f"Option ({optionNum}): Action: {action}, Value: {vInDebug[:2]}, iterations: {MultiAgent.iterations}"
-            #       f", Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
-            #       f"Seq: {vInDebug[2]}\nOpponent Predicted Seq: {vInDebug[3]}\n")
             optionNum += 1
             return self.maxKeyFunc(v)
         nextAction = max(actions, key=Key) if len(actions) > 1 else actions[0]
@@ -221,8 +217,8 @@ class MultiAgent(SearchAgent, ABC):
         Returns:
             float: The evaluation score of the agent.
         """
-        return self.score + 0.5 * len([p for p, d in self.GetDropdowns() if d >= self.cost]) +\
-            0.2 * len([p for p, d in grid.GetDropdowns() if d >= self.cost])
+        return self.score + 0.5 * len([p for p, d in self.GetDropdowns() if d > self.cost]) +\
+            0.2 * len([p for p, d in grid.GetDropdowns() if d > self.cost])
 
     @abstractmethod
     def Eval(self, state: State) -> list[float, float, list[Node], list[Node]]:
@@ -269,10 +265,12 @@ class MultiAgent(SearchAgent, ABC):
         nextGrid = nextState.grid
         nextAgent.SimulateStep(nextGrid, action)
         if self.coordinates != action and nextState.IsVisited():
-            retval = MultiAgent.visitedStates[nextState][1]
-            seqPrefix = nextAgent.seq
-            newSeq = seqPrefix + retval[3][len(seqPrefix):]
-            retval[3] = newSeq
+            retval = MultiAgent.visitedStates[nextState]
+            def PatchSeq(i: int, agent: MultiAgent, v: MinimaxValueType) -> MinimaxValueType:
+                seqPrefix = agent.seq
+                v[i] = seqPrefix + v[i][len(seqPrefix):]
+            PatchSeq(3, nextOtherAgent, retval)
+            PatchSeq(4, nextAgent, retval)
             return retval
         MultiAgent.iterations += 1
 
@@ -292,7 +290,7 @@ class MultiAgent(SearchAgent, ABC):
                     return v
                 alpha = max(alpha, v, key=self.maxKeyFunc)
 
-        MultiAgent.visitedStates[nextState] = (nextAgent.seq, v)
+        MultiAgent.visitedStates[nextState] = v
         return v
 
 
@@ -386,4 +384,8 @@ class State:
         nextOtherAgent: MultiAgent
         nextGrid, nextAgent, nextOtherAgent = self
         nodes = nextAgent.FormulateGoal(nextGrid, None).union(nextOtherAgent.FormulateGoal(nextGrid, None))
-        return self.otherAgent.cost == self.otherAgent.cutoff or not actions or not nodes
+
+        maxDropoffTime = max(nextAgent.GetDropdowns() +\
+            nextOtherAgent.GetDropdowns() + nextGrid.GetDropdowns() + (((), float('-inf')), ), key=lambda x: x[1])[1]
+        return self.otherAgent.cost == self.otherAgent.cutoff or not actions or not nodes or\
+            min(nextAgent.cost, nextOtherAgent.cost) >= maxDropoffTime
