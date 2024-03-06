@@ -10,7 +10,6 @@ class Agent(ABC):
     Args:
         ABC: inherits from abstract class
     """
-    lastDropOffTime: int = float('inf')
 
     def __init__(self, params: list[str], _: Grid) -> None:
         self._coordinates: Node = (int(params[0]), int(params[1]))
@@ -43,11 +42,7 @@ class Agent(ABC):
 
 class AgentType(Enum):
     """Agent Type Enum"""
-    STUPID_GREEDY = 'SG'
-    GREEDY = 'G'
-    A_STAR = 'A'
-    RTA_STAR = 'RTA'
     HUMAN = 'H'
-    INTERFERING = 'I'
-    MULTI_AGNENT = 'MA'
     ADVERSARIAL = 'AD'
+    SEMI_COOP = 'SC'
+    COOP = 'C'

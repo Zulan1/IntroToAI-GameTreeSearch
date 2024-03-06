@@ -4,15 +4,14 @@ from agents.multi_agent import MultiAgent, State
 from grid import Grid
 from type_aliases import Node, MinimaxValueType
 
-class AdversarialAgent(MultiAgent):
-    """Adversarial Agent Class"""
+class CoopAgent(MultiAgent):
+    """Cooperative Agent Class"""
     def __init__(self, params: list[str], _: Grid) -> None:
         super().__init__(params, _)
         self.maxKeyFunc: Callable = lambda x: (x[0], x[1], -len(x[3]) if x[3] else float('-inf'))
-        self.allowPruning: bool = True
-        self.defaultVal: float = float('inf')
+        self.allowPruning: bool = False
 
-    def Eval(self, state: State) -> MinimaxValueType:
+    def Eval(self, state: State) -> list[float, float, list[Node]]:
         """
         Evaluates the given state and returns the difference in evaluation values between the agent and the other agent,
         the evaluation value of the agent itself, the sequence of nodes for the agent,
@@ -30,11 +29,11 @@ class AdversarialAgent(MultiAgent):
         otherEval: float = state.otherAgent.AgentEval(state.grid)
         seq: list[Node] = state.agent.seq
         otherSeq: list[Node] = state.otherAgent.seq
-        diffVal = selfEval - otherEval
-        return [round(diffVal, 1), round(selfEval, 1), round(otherEval, 1), seq, otherSeq]
+        sumEval = selfEval + otherEval
+        return [round(sumEval, 1) ,round(selfEval, 1), round(otherEval, 1), seq, otherSeq]
 
-    def ReverseV(self, v: MinimaxValueType) -> MinimaxValueType:
-        return [-v[0], -v[1], v[2], v[4], v[3]]
+    def ReverseV(self, v):
+        return [v[0], v[2], v[1], v[4], v[3]]
 
     def DebugMessage(self, v: MinimaxValueType, action: Node, optionNum: int) -> MinimaxValueType:
         """
@@ -47,6 +46,6 @@ class AdversarialAgent(MultiAgent):
             MinimaxValueType: The converted MinimaxValueType in debug format.
         """
         return (f"Option ({optionNum}): Action: {action}, "
-                f"Diff Estimation Value: {v[0]}, Self Estimation Value: {v[1]}, iterations: {MultiAgent.iterations}, "
+                f"Sum Estimation Value: {v[0]}, Self Estimation Value: {v[1]}, iterations: {MultiAgent.iterations}, "
                 f"Prune Count: {MultiAgent.pruneCount}, Visited Count: {MultiAgent.visitedCount}\n"
                 f"Sequence: {v[3]}\nOpponent Predicted Sequence: {v[4]}\n")

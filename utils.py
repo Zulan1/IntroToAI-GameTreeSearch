@@ -1,21 +1,21 @@
-import networkx as nx
 from typing import Tuple
+import networkx as nx
 from grid import Grid, UpdateGridType
 from agents.agent import Agent, AgentType
 from agents.human_agent import HumanAgent
-from agents.interfering_agent import InterferingAgent
+from agents.search_agent import SearchAgent
+from agents.multi_agent import MultiAgent
 from agents.adversarial_agent import AdversarialAgent
+from agents.semi_coop_agent import SemiCoopAgent
+from agents.coop_agent import CoopAgent
+from package import Package
 from type_aliases import Node
 
 agent_classes = {
-    # AgentType.STUPID_GREEDY.value: StupidGreedyAgent,
-    # AgentType.GREEDY.value: GreedyAgent,
-    # AgentType.A_STAR.value: AStarAgent,
-    # AgentType.RTA_STAR.value: RTAStarAgent,
     AgentType.HUMAN.value: HumanAgent,
-    AgentType.INTERFERING.value: InterferingAgent,
-    # AgentType.MULTI_AGNENT.value: MultiAgent
     AgentType.ADVERSARIAL.value: AdversarialAgent,
+    AgentType.SEMI_COOP.value: SemiCoopAgent,
+    AgentType.COOP.value: CoopAgent,
 }
 
 def InitGrid(initFilePath: str) -> Tuple[Grid, list[Agent]]:
@@ -45,6 +45,9 @@ def InitGrid(initFilePath: str) -> Tuple[Grid, list[Agent]]:
         if any(action == updateGridType.value for updateGridType in UpdateGridType):
             grid.UpdateGrid(action, line[1:])
 
+    SearchAgent.dropOffTimes = sum(grid.packages.values(), [])
+    SearchAgent.dropOffTimes.sort(key=lambda x: x.dropOffMaxTime, reverse=True)
+
     Grid.numOfPackages = len(sum(grid.packages.values(), []))
 
     agents: list[Agent] = []
@@ -59,42 +62,10 @@ def InitGrid(initFilePath: str) -> Tuple[Grid, list[Agent]]:
     lastDropOffTime = max(p.dropOffMaxTime for p in sum(grid.packages.values(), []))
     Agent.lastDropOffTime = lastDropOffTime
 
-    for i, agent in enumerate([agent for agent in agents if isinstance(agent, AdversarialAgent)]):
+    for i, agent in enumerate([agent for agent in agents if isinstance(agent, MultiAgent)]):
         agent.agentNum = i
 
     return grid, agents
-
-def SearchMinPath(grid: Grid, start: Node, nodes: set[Node]) -> list[Node]:
-    """searches the shortest path between 1 start node and multiple target nodes
-
-    Args:
-        grid (Grid): the simulator's grid
-        nodes (list[Node]): a list of target nodes
-
-    Returns:
-        list[Node]: the shortest path to the closest target node
-    """
-    minPath = None
-    for node in nodes:
-        path = Dijkstra(grid.graph, start, node)
-        minPath = ComparePaths(minPath, path)
-    return list(minPath)
-
-def ComparePaths(path0: list[Node], path1: list[Node]) -> list[Node]:
-    """Compares 2 paths and chooses the shortest path. chooses lower x value, and then y value in case of ties.
-
-    Args:
-        path0 (list[Node]): a path between 2 nodes
-        path1 (list[Node]): a different path between 2 nodes
-
-    Returns:
-        list[Node]: shortest path
-    """
-    if path0 is None or (path1 is not None and len(path1) < len(path0)):
-        return path1
-    if path1 is None or (len(path0) < len(path1)):
-        return path0
-    return min(path0, path1, key=lambda path: (path[-1].x, path[-1].y))
 
 def Dijkstra(g: nx.Graph, start: Node, end: Node) -> list[Node]:
     """dijkstra algorithm implementation
@@ -116,7 +87,7 @@ def Dijkstra(g: nx.Graph, start: Node, end: Node) -> list[Node]:
         if u == end:
             break
         for v in g.neighbors(u):
-            alt = dist[u] + g[u][v].get('weight', 1)
+            alt = dist.get(u, float('inf')) + g[u][v].get('weight', 1)
             if alt < dist.get(v, float('inf')):
                 dist[v] = alt
                 prev[v] = u
@@ -127,24 +98,6 @@ def Dijkstra(g: nx.Graph, start: Node, end: Node) -> list[Node]:
         u = prev[u]
     path.insert(0, u)
     return path
-
-def MinimumSpanningTree(g: nx.Graph) -> nx.Graph:
-    """Kruksal's minimum spanning tree algorithm implementation
-
-    Args:
-        g (nx.Graph): a graph
-
-    Returns:
-        nx.Graph: the minimum spanning tree of g
-    """
-    mst = nx.Graph()
-    mst.add_nodes_from(g.nodes)
-    edges = sorted(g.edges(data=True), key=lambda edge: edge[2].get('weight', 1))
-    
-    for edge in edges:
-        if not nx.has_path(mst, edge[0], edge[1]):
-            mst.add_edge(edge[0], edge[1], weight=edge[2].get('weight', 1))
-    return mst
 
 def GetNeighbors(grid: Grid, node: Node) -> set[Node]:
     """Gets the neighbors of a node

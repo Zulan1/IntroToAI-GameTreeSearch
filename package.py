@@ -50,17 +50,3 @@ class Package:
             int: time
         """
         return self._dropOffMaxTime
-    
-    def __eq__(self, other: Package) -> bool:
-        """checks if two packages are equal
-
-        Args:
-            other (Package): other package
-
-        Returns:
-            bool: True if equal, False otherwise
-        """
-        return all([self.pickupLoc == other.pickupLoc,
-                    self.dropoffLoc == other.dropoffLoc,
-                    self.pickupTime == other.pickupTime,
-                    self.dropOffMaxTime == other.dropOffMaxTime])

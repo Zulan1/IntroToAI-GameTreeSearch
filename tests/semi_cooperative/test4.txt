@@ -1,0 +1,14 @@
+#X 3                ; Maximum x coordinate
+#Y 1                ; Maximum y coordinate
+#P 0 1 0  D 0 0 2  ; Package at (4,0) from time 1, deliver to (4,2) on or before time 50
+#P 1 0 0  D 1 1 5  ; Package at (0,3) from time 5, deliver to (4,0) on or before time 50
+#P 2 0 0  D 1 0 8  ; Package at (2,3) from time 5, deliver to (4,0) on or before time 50
+#P 3 1 0  D 3 0 2  ; Package at (2,3) from time 5, deliver to (4,0) on or before time 50
+
+#B 2 0 3 0
+#B 1 1 2 1
+
+#F 2 1 3 1
+#H -1 -1              ; "Human" agent (see below) starts at (4,3)
+#SC 0 0              ; Normal agent starts at (0,0)
+#SC 2 1              ; Normal agent starts at (0,0)
