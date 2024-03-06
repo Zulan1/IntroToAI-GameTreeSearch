@@ -8,7 +8,6 @@ from agents.multi_agent import MultiAgent
 from agents.adversarial_agent import AdversarialAgent
 from agents.semi_coop_agent import SemiCoopAgent
 from agents.coop_agent import CoopAgent
-from package import Package
 from type_aliases import Node
 
 agent_classes = {
