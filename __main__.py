@@ -17,13 +17,13 @@ def Main():
     config.read('config.ini')
     filePath = config['settings'].get('grid_config_path', './tests/test1.txt')
     MultiAgent.cutOffLimit = int(config['settings'].get('cutoff', 10))
-    HumanAgent.useButton = config['settings'].get('use_button', 'True') == 'True'
+    HumanAgent.useButton = config['settings'].get('continuous', 'True') == 'True'
     assert path.exists(filePath), "Path to grid configuration file does not exist!"
 
     grid: Grid
     agents: list[Agent]
     grid, agents = InitGrid(filePath)
-    
+
     i = 0
     while any(agent.done is not True for agent in agents) and i <= SearchAgent.dropOffTimes[0].dropOffMaxTime:
         for agent in agents:
